@@ -17,11 +17,14 @@ model Attachment {
   createdAt DateTime @default(now())
   projectId String?
   taskId    String?
+  commentId String?
   project   Project? @relation(fields: [projectId], references: [id], map: "Attachment_projectId_fkey")
   task      Task?    @relation(fields: [taskId], references: [id], map: "Attachment_taskId_fkey")
+  comment   Comment? @relation(fields: [commentId], references: [id], map: "Attachment_commentId_fkey")
 
   @@index([projectId], map: "Attachment_projectId_fkey")
   @@index([taskId], map: "Attachment_taskId_fkey")
+  @@index([commentId], map: "Attachment_commentId_fkey")
   @@map("attachment")
 }
 
@@ -73,15 +76,16 @@ model Task {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  content   String   @db.LongText
-  taskId    String
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String       @id @default(cuid())
+  content     String       @db.LongText
+  taskId      String
+  userId      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id])
+  task        Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id])
+  attachments Attachment[]
 
   @@index([taskId])
   @@index([userId])

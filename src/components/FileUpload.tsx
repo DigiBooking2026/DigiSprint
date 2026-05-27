@@ -9,9 +9,10 @@ interface FileUploadProps {
   projectId?: string;
   taskId?: string;
   onUploadComplete: (attachment: Attachment) => void;
+  children?: React.ReactNode;
 }
 
-export function FileUpload({ projectId, taskId, onUploadComplete }: FileUploadProps) {
+export function FileUpload({ projectId, taskId, onUploadComplete, children }: FileUploadProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,21 +52,27 @@ export function FileUpload({ projectId, taskId, onUploadComplete }: FileUploadPr
         ref={fileInputRef}
         onChange={handleFileChange}
       />
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={uploading}
-        onClick={() => fileInputRef.current?.click()}
-        className="gap-2"
-      >
-        {uploading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Paperclip className="h-4 w-4" />
-        )}
-        Add Attachment
-      </Button>
+      {children ? (
+        <div onClick={() => !uploading && fileInputRef.current?.click()} className={uploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}>
+          {children}
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+          className="gap-2"
+        >
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Paperclip className="h-4 w-4" />
+          )}
+          Add Attachment
+        </Button>
+      )}
     </div>
   );
 }
@@ -82,11 +89,11 @@ export function AttachmentList({ attachments, onRemove }: { attachments: Attachm
           ) : (
             <FileText className="h-4 w-4 text-muted-foreground" />
           )}
-          <a href={file.url} target="_blank" rel="noopener noreferrer" className="hover:underline max-w-[150px] truncate">
+          <a href={file.url} target="_blank" rel="noopener noreferrer" className="hover:underline max-w-[150px] truncate font-medium">
             {file.name}
           </a>
           {onRemove && (
-            <button onClick={() => onRemove(file.id)} className="text-muted-foreground hover:text-destructive">
+            <button onClick={() => onRemove(file.id)} className="text-muted-foreground hover:text-destructive transition-colors">
               <X className="h-3 w-3" />
             </button>
           )}

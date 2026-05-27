@@ -87,7 +87,7 @@ export default function AdminUsers() {
                     <TableCell className="font-medium">{user.name || "N/A"}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      <Select value={user.role} onValueChange={(val) => updateRole(user.id, val)}>
+                      <Select value={user.role} onValueChange={(val) => updateRole(user.id, val || 'USER')}>
                         <SelectTrigger className="w-[120px] h-8">
                           <SelectValue />
                         </SelectTrigger>

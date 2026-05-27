@@ -14,6 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { taskId: String(taskId) },
         include: {
           user: { select: { id: true, name: true, email: true } },
+          attachments: true,
         },
         orderBy: { createdAt: 'asc' },
       });
@@ -26,17 +27,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { content } = req.body;
-      if (!content) return res.status(400).json({ error: "Content is required" });
+      const { content, attachmentIds } = req.body;
+      if (!content && (!attachmentIds || attachmentIds.length === 0)) {
+        return res.status(400).json({ error: "Content or attachments required" });
+      }
 
       const comment = await prisma.comment.create({
         data: {
-          content,
+          content: content || "",
           taskId: String(taskId),
           userId: session.userId,
+          attachments: {
+            connect: (attachmentIds || []).map((id: string) => ({ id }))
+          }
         },
         include: {
           user: { select: { id: true, name: true, email: true } },
+          attachments: true,
         },
       });
 

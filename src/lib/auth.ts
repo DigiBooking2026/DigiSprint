@@ -14,15 +14,22 @@ export async function encrypt(payload: Record<string, unknown>) {
     .sign(key);
 }
 
-export async function decrypt(input: string): Promise<Record<string, unknown>> {
+export interface Session {
+  userId: string;
+  role?: string;
+  expires: string;
+  [key: string]: unknown;
+}
+
+export async function decrypt(input: string): Promise<Session> {
   const { payload } = await jwtVerify(input, key, {
     algorithms: ["HS256"],
   });
-  return payload as Record<string, unknown>;
+  return payload as unknown as Session;
 }
 
 // Support for Pages Router API routes
-export async function getSessionFromRequest(req: NextApiRequest | Request) {
+export async function getSessionFromRequest(req: NextApiRequest | Request): Promise<Session | null> {
   let sessionStr: string | undefined;
 
   if (req instanceof Request) {
