@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  size      Int
+  type      String
+  createdAt DateTime @default(now())
+  projectId String?
+  taskId    String?
+  project   Project? @relation(fields: [projectId], references: [id], map: "Attachment_projectId_fkey")
+  task      Task?    @relation(fields: [taskId], references: [id], map: "Attachment_taskId_fkey")
+
+  @@index([projectId], map: "Attachment_projectId_fkey")
+  @@index([taskId], map: "Attachment_taskId_fkey")
+  @@map("attachment")
+}
+
+model Project {
+  id          String       @id @default(cuid())
+  name        String
+  description String?      @db.LongText
+  prefix      String       @default("DB")
+  deletedAt   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attachments Attachment[]
+  tasks       Task[]
+  statuses    TaskStatus[]
+  
+  @@map("project")
+}
+
+model Task {
+  id          String        @id @default(cuid())
+  ticketId    String        @unique(map: "Task_ticketId_key")
+  title       String
+  description String?       @db.LongText
+  type        String        @default("TASK")
+  category    String?
+  storyPoints Float         @default(0)
+  loggedTime  Float         @default(0)
+  deadline    DateTime?
+  statusId    String
+  projectId   String
+  ownerId     String
+  assigneeId  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  attachments Attachment[]
+  assignee    User?         @relation("task_assignee", fields: [assigneeId], references: [id], map: "Task_assigneeId_fkey")
+  owner       User          @relation("task_owner", fields: [ownerId], references: [id], map: "Task_ownerId_fkey")
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade, map: "Task_projectId_fkey")
+  status      TaskStatus    @relation(fields: [statusId], references: [id], map: "Task_statusId_fkey")
+  history     TaskHistory[]
+  comments    Comment[]
+
+  @@index([assigneeId], map: "Task_assigneeId_fkey")
+  @@index([ownerId], map: "Task_ownerId_fkey")
+  @@index([projectId], map: "Task_projectId_fkey")
+  @@index([statusId], map: "Task_statusId_fkey")
+  @@map("task")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.LongText
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([userId])
+  @@map("comment")
+}
+
+model TaskHistory {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  oldStatus String?
+  newStatus String
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade, map: "TaskHistory_taskId_fkey")
+  user      User     @relation(fields: [userId], references: [id], map: "TaskHistory_userId_fkey")
+
+  @@index([taskId], map: "TaskHistory_taskId_fkey")
+  @@index([userId], map: "TaskHistory_userId_fkey")
+  @@map("taskhistory")
+}
+
+model TaskStatus {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  projectId String
+  tasks     Task[]
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade, map: "TaskStatus_projectId_fkey")
+
+  @@unique([name, projectId], map: "TaskStatus_name_projectId_key")
+  @@index([projectId], map: "TaskStatus_projectId_fkey")
+  @@map("taskstatus")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique(map: "User_email_key")
+  name          String?
+  password      String
+  role          String        @default("USER")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  assignedTasks Task[]        @relation("task_assignee")
+  ownedTasks    Task[]        @relation("task_owner")
+  histories     TaskHistory[]
+  comments      Comment[]
+  
+  @@map("user")
+}
