@@ -36,6 +36,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 type ExtendedTask = Task & { 
   assignee?: User | null, 
+  owner?: User | null,
   status?: TaskStatus | null,
   attachments?: Attachment[],
   comments?: (Comment & { user: User, attachments: Attachment[] })[],
@@ -287,6 +288,7 @@ export default function ProjectBoard() {
   const [editDeadline, setEditDeadline] = useState("");
   const [editPriority, setEditPriority] = useState("MEDIUM");
   const [editBlockedReason, setEditBlockedReason] = useState("");
+  const [editOwnerId, setEditOwnerId] = useState("");
   
   // Chat state
   const [commentText, setCommentText] = useState("");
@@ -362,6 +364,7 @@ export default function ProjectBoard() {
       setEditDeadline(data.deadline ? new Date(data.deadline).toISOString().split('T')[0] : "");
       setEditPriority(data.priority || "MEDIUM");
       setEditBlockedReason(data.blockedReason || "");
+      setEditOwnerId(data.ownerId || "");
     }
   };
 
@@ -382,6 +385,7 @@ export default function ProjectBoard() {
         deadline: editDeadline || null,
         priority: editPriority,
         blockedReason: editBlockedReason || null,
+        ownerId: editOwnerId,
         attachmentIds: selectedTask.attachments?.map(a => a.id) || []
       }),
     });
@@ -851,6 +855,10 @@ export default function ProjectBoard() {
                     <Flag className="h-3 w-3" />
                     {selectedTask?.priority || "MEDIUM"}
                   </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <UserIcon className="h-3 w-3" />
+                    Owner: {selectedTask?.owner?.name || selectedTask?.owner?.email || "Unknown"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                    {isEditing ? (
@@ -893,6 +901,17 @@ export default function ProjectBoard() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Owner</Label>
+                      <Select value={editOwnerId} onValueChange={(val) => setEditOwnerId(val || "")}>
+                        <SelectTrigger><SelectValue placeholder="Select owner" /></SelectTrigger>
+                        <SelectContent>
+                          {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
                     {/blocked/i.test(selectedTask?.status?.name || "") && (
                       <div className="space-y-2">
                         <Label className="text-xs font-bold text-primary uppercase">Blocked Reason</Label>
@@ -1002,6 +1021,10 @@ export default function ProjectBoard() {
                                   {h.oldStatus === "Task edited" || h.oldStatus === "Edit" ? (
                                     <>
                                       edited the task: <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1 font-bold text-primary">{h.newStatus}</span>
+                                    </>
+                                  ) : h.oldStatus === "Owner changed" || h.oldStatus === "Assignee changed" ? (
+                                    <>
+                                      {h.oldStatus.toLowerCase()}: <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1 font-bold text-primary">{h.newStatus}</span>
                                     </>
                                   ) : (
                                     <>

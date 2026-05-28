@@ -12,11 +12,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, loggedTime, attachmentIds, deadline } = req.body;
+      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, loggedTime, attachmentIds, deadline } = req.body;
 
       const existingTask = await prisma.task.findUnique({
         where: { id: taskId },
-        include: { status: true, assignee: true, attachments: true }
+        include: { status: true, assignee: true, owner: true, attachments: true }
       });
 
       if (!existingTask) return res.status(404).json({ error: "Task not found" });
@@ -30,6 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(400).json({ error: "Blocked reason is required when status is Blocked" });
         }
       }
+      const newOwner = ownerId !== undefined && existingTask.ownerId !== ownerId
+        ? await prisma.user.findUnique({ where: { id: ownerId } })
+        : null;
+      if (ownerId !== undefined && existingTask.ownerId !== ownerId && !newOwner) {
+        return res.status(404).json({ error: "Owner not found" });
+      }
 
       const updateData: Prisma.TaskUpdateInput = {};
       if (title) updateData.title = title;
@@ -41,6 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (blockedReason !== undefined) updateData.blockedReason = blockedReason || null;
       if (statusId) updateData.status = { connect: { id: statusId } };
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
+      if (ownerId !== undefined) updateData.owner = { connect: { id: ownerId } };
       if (loggedTime !== undefined) updateData.loggedTime = Number(existingTask.loggedTime) + Number(loggedTime);
       if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null;
       if (attachmentIds !== undefined) {
@@ -55,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         include: {
           status: true,
           assignee: { select: { id: true, name: true, email: true } },
+          owner: { select: { id: true, name: true, email: true } },
           attachments: true,
           history: {
             include: { user: { select: { name: true, email: true } } },
@@ -78,14 +86,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Log assignee change
       if (assigneeId !== undefined && existingTask.assigneeId !== (assigneeId || null)) {
           const newAssignee = assigneeId ? await prisma.user.findUnique({ where: { id: assigneeId } }) : null;
+          const oldAssigneeName = existingTask.assignee?.name || existingTask.assignee?.email || "Unassigned";
+          const newAssigneeName = newAssignee?.name || newAssignee?.email || "Unassigned";
           await prisma.taskHistory.create({
               data: {
                   taskId: updatedTask.id,
                   userId: session.userId,
-                  oldStatus: existingTask.assignee?.name || existingTask.assignee?.email || "Unassigned",
-                  newStatus: newAssignee?.name || newAssignee?.email || "Unassigned",
+                  oldStatus: "Assignee changed",
+                  newStatus: `${oldAssigneeName} -> ${newAssigneeName}`,
               }
           });
+      }
+
+      if (ownerId !== undefined && existingTask.ownerId !== ownerId) {
+        const oldOwnerName = existingTask.owner.name || existingTask.owner.email;
+        const newOwnerName = newOwner!.name || newOwner!.email;
+        await prisma.taskHistory.create({
+          data: {
+            taskId: updatedTask.id,
+            userId: session.userId,
+            oldStatus: "Owner changed",
+            newStatus: `${oldOwnerName} -> ${newOwnerName}`,
+          }
+        });
       }
 
       const changedFields: string[] = [];
@@ -133,6 +156,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         include: {
           status: true,
           assignee: { select: { id: true, name: true, email: true } },
+          owner: { select: { id: true, name: true, email: true } },
           attachments: true,
           comments: {
               include: { user: { select: { id: true, name: true, email: true } }, attachments: true },
