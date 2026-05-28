@@ -19,6 +19,8 @@ export default function AdminUsers() {
   // Confirmation Modal
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{ id: string, email: string } | null>(null);
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
+  const [userToUpdateStatus, setUserToUpdateStatus] = useState<{ id: string, email: string, isActive: boolean } | null>(null);
 
   const fetchUsers = async () => {
     const res = await fetch("/api/admin/users");
@@ -58,13 +60,22 @@ export default function AdminUsers() {
     if (res.ok) fetchUsers();
   };
 
-  const updateUserStatus = async (userId: string, isActive: boolean) => {
+  const openStatusConfirmation = (user: AdminUser) => {
+    setUserToUpdateStatus({ id: user.id, email: user.email, isActive: user.isActive });
+    setStatusConfirmOpen(true);
+  };
+
+  const confirmUpdateUserStatus = async () => {
+    if (!userToUpdateStatus) return;
+
     const res = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, isActive }),
+      body: JSON.stringify({ userId: userToUpdateStatus.id, isActive: !userToUpdateStatus.isActive }),
     });
     if (res.ok) {
+      setStatusConfirmOpen(false);
+      setUserToUpdateStatus(null);
       fetchUsers();
     } else {
       const err = await res.json();
@@ -144,7 +155,7 @@ export default function AdminUsers() {
                         size="sm"
                         className="mr-2"
                         disabled={user.id === currentUserId && user.isActive}
-                        onClick={() => updateUserStatus(user.id, !user.isActive)}
+                        onClick={() => openStatusConfirmation(user)}
                       >
                         {user.isActive ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
                         {user.isActive ? "Deactivate" : "Activate"}
@@ -181,6 +192,33 @@ export default function AdminUsers() {
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDeleteUser}>Confirm Delete</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={statusConfirmOpen} onOpenChange={setStatusConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className={`flex items-center gap-2 ${userToUpdateStatus?.isActive ? "text-destructive" : "text-emerald-600"}`}>
+              {userToUpdateStatus?.isActive ? <PowerOff className="h-5 w-5" /> : <Power className="h-5 w-5" />}
+              {userToUpdateStatus?.isActive ? "Deactivate User?" : "Activate User?"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-muted-foreground">
+              Are you sure you want to {userToUpdateStatus?.isActive ? "deactivate" : "activate"} <span className="font-semibold text-foreground">&quot;{userToUpdateStatus?.email}&quot;</span>?
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground/80">
+              {userToUpdateStatus?.isActive
+                ? "This user will not be able to log in and will be hidden from assignment and stats."
+                : "This user will be able to log in again and appear in assignment and stats."}
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setStatusConfirmOpen(false)}>Cancel</Button>
+            <Button variant={userToUpdateStatus?.isActive ? "destructive" : "default"} onClick={confirmUpdateUserStatus}>
+              {userToUpdateStatus?.isActive ? "Confirm Deactivate" : "Confirm Activate"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
