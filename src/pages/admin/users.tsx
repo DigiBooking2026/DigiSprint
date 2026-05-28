@@ -6,11 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trash2, UserCog, AlertTriangle } from "lucide-react";
+import { Trash2, UserCog, AlertTriangle, Power, PowerOff } from "lucide-react";
 import { User } from "@/generated/prisma";
 
+type AdminUser = User & { isActive: boolean };
+
 export default function AdminUsers() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Confirmation Modal
@@ -28,9 +31,14 @@ export default function AdminUsers() {
   useEffect(() => {
     let isMounted = true;
 
-    fetch("/api/admin/users")
-      .then(async (res) => {
-        if (res.ok && isMounted) setUsers(await res.json());
+    Promise.all([fetch("/api/admin/users"), fetch("/api/auth/me")])
+      .then(async ([usersRes, meRes]) => {
+        if (!isMounted) return;
+        if (usersRes.ok) setUsers(await usersRes.json());
+        if (meRes.ok) {
+          const me = await meRes.json();
+          setCurrentUserId(me.id);
+        }
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -48,6 +56,20 @@ export default function AdminUsers() {
       body: JSON.stringify({ userId, role }),
     });
     if (res.ok) fetchUsers();
+  };
+
+  const updateUserStatus = async (userId: string, isActive: boolean) => {
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, isActive }),
+    });
+    if (res.ok) {
+      fetchUsers();
+    } else {
+      const err = await res.json();
+      alert(err.error || "Failed to update user status");
+    }
   };
 
   const openDeleteConfirmation = (id: string, email: string) => {
@@ -89,6 +111,7 @@ export default function AdminUsers() {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -109,8 +132,23 @@ export default function AdminUsers() {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${user.isActive ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
+                        {user.isActive ? "Active" : "Deactivated"}
+                      </span>
+                    </TableCell>
                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mr-2"
+                        disabled={user.id === currentUserId && user.isActive}
+                        onClick={() => updateUserStatus(user.id, !user.isActive)}
+                      >
+                        {user.isActive ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                        {user.isActive ? "Deactivate" : "Activate"}
+                      </Button>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => openDeleteConfirmation(user.id, user.email)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>

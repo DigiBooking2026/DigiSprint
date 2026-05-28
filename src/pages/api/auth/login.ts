@@ -18,6 +18,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    if (!user.isActive) {
+      return res.status(403).json({ error: "This account is deactivated. Contact an administrator." });
+    }
+
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return res.status(401).json({ error: "Invalid credentials" });

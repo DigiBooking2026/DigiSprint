@@ -58,8 +58,8 @@ async function ensureUsers() {
   for (const user of users) {
     created.push(await prisma.user.upsert({
       where: { email: user.email },
-      update: { name: user.name, role: user.role },
-      create: { ...user, password: hashedPassword },
+      update: { name: user.name, role: user.role, isActive: true },
+      create: { ...user, password: hashedPassword, isActive: true },
     }));
   }
   return created;
