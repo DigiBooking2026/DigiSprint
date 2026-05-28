@@ -29,10 +29,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { title, description, storyPoints, deadline, statusId, projectId, assigneeId, attachmentIds, type, category } = req.body;
+      const { title, description, storyPoints, deadline, statusId, projectId, assigneeId, attachmentIds, type, category, priority, blockedReason } = req.body;
 
       const project = await prisma.project.findUnique({ where: { id: projectId } });
       if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const status = await prisma.taskStatus.findUnique({ where: { id: statusId } });
+      if (!status) return res.status(404).json({ error: "Status not found" });
+      if (/blocked/i.test(status.name) && !String(blockedReason || "").trim()) {
+        return res.status(400).json({ error: "Blocked reason is required when status is Blocked" });
+      }
 
       const count = await prisma.task.count({ where: { projectId } });
       const ticketId = `${project.prefix}-${count + 1}`;
@@ -44,6 +50,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           description,
           type: type || "TASK",
           category,
+          priority: priority || "MEDIUM",
+          blockedReason: blockedReason || null,
           storyPoints: Number(storyPoints) || 0,
           deadline: deadline ? new Date(deadline) : null,
           statusId,

@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { title, description, storyPoints, type, category, statusId, assigneeId, loggedTime, attachmentIds, deadline } = req.body;
+      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, loggedTime, attachmentIds, deadline } = req.body;
 
       const existingTask = await prisma.task.findUnique({
         where: { id: taskId },
@@ -21,12 +21,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!existingTask) return res.status(404).json({ error: "Task not found" });
 
+      const targetStatus = statusId
+        ? await prisma.taskStatus.findUnique({ where: { id: statusId } })
+        : existingTask.status;
+      if (targetStatus && /blocked/i.test(targetStatus.name)) {
+        const reason = blockedReason !== undefined ? blockedReason : existingTask.blockedReason;
+        if (!String(reason || "").trim()) {
+          return res.status(400).json({ error: "Blocked reason is required when status is Blocked" });
+        }
+      }
+
       const updateData: Prisma.TaskUpdateInput = {};
       if (title) updateData.title = title;
       if (description !== undefined) updateData.description = description;
       if (storyPoints !== undefined) updateData.storyPoints = Number(storyPoints);
       if (type) updateData.type = type;
       if (category !== undefined) updateData.category = category;
+      if (priority !== undefined) updateData.priority = priority || "MEDIUM";
+      if (blockedReason !== undefined) updateData.blockedReason = blockedReason || null;
       if (statusId) updateData.status = { connect: { id: statusId } };
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
       if (loggedTime !== undefined) updateData.loggedTime = Number(existingTask.loggedTime) + Number(loggedTime);
@@ -82,6 +94,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (storyPoints !== undefined && Number(storyPoints) !== existingTask.storyPoints) changedFields.push("story points");
       if (type !== undefined && type !== existingTask.type) changedFields.push("type");
       if (category !== undefined && category !== existingTask.category) changedFields.push("category");
+      if (priority !== undefined && priority !== existingTask.priority) changedFields.push("priority");
+      if (blockedReason !== undefined && blockedReason !== existingTask.blockedReason) changedFields.push("blocked reason");
       if (loggedTime !== undefined && Number(loggedTime) > 0) changedFields.push("logged time");
       if (deadline !== undefined) {
         const oldDeadline = existingTask.deadline ? existingTask.deadline.toISOString().split("T")[0] : "";

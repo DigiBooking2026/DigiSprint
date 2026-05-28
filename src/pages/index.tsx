@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Folder, Trash2, AlertTriangle, AlertCircle, Clock, CheckCircle2, PlayCircle, CircleDashed, Pencil } from "lucide-react";
+import { PlusCircle, Folder, Trash2, AlertTriangle, AlertCircle, Clock, CheckCircle2, PlayCircle, CircleDashed, Pencil, ShieldAlert } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
 import { Project, Attachment, User } from "@/generated/prisma";
@@ -27,6 +27,11 @@ type ProjectWithWork = Project & {
 const isDoneStatus = (name?: string) => /done|closed|complete|cancelled/i.test(name || "");
 const isNotStartedStatus = (name?: string) => /backlog|to do|todo|not started|open/i.test(name || "");
 const isPastDate = (value?: string | Date | null) => Boolean(value && new Date(value) < new Date());
+const isDueSoon = (value?: string | Date | null) => {
+  if (!value || isPastDate(value)) return false;
+  const diff = new Date(value).getTime() - new Date().getTime();
+  return diff <= 2 * 24 * 60 * 60 * 1000;
+};
 
 function getProjectWorkState(project: ProjectWithWork) {
   const tasks = project.tasks || [];
@@ -34,10 +39,17 @@ function getProjectWorkState(project: ProjectWithWork) {
   const notStarted = tasks.filter(task => isNotStartedStatus(task.status?.name)).length;
   const inProgress = Math.max(tasks.length - done - notStarted, 0);
   const overdueTasks = tasks.filter(task => !isDoneStatus(task.status?.name) && isPastDate(task.deadline)).length;
+  const dueSoonTasks = tasks.filter(task => !isDoneStatus(task.status?.name) && isDueSoon(task.deadline)).length;
+  const blockedTasks = tasks.filter(task => /blocked/i.test(task.status?.name || "")).length;
   const progress = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
   const state = tasks.length === 0 ? "Not started" : done === tasks.length ? "Done" : inProgress > 0 ? "In progress" : "Not started";
+  const health = overdueTasks > 0 || blockedTasks > 0
+    ? "Critical"
+    : dueSoonTasks > 0 || progress < 50
+      ? "Warning"
+      : "Healthy";
 
-  return { done, notStarted, inProgress, overdueTasks, progress, state };
+  return { done, notStarted, inProgress, overdueTasks, dueSoonTasks, blockedTasks, progress, state, health };
 }
 
 export default function Dashboard() {
@@ -269,6 +281,12 @@ export default function Dashboard() {
                             Overdue
                           </span>
                         )}
+                        {!isOverdue && work.dueSoonTasks > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-600">
+                            <Clock className="h-3 w-3" />
+                            Due soon
+                          </span>
+                        )}
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         <Button
@@ -312,19 +330,23 @@ export default function Dashboard() {
                     </div>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 font-semibold ${work.health === 'Healthy' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600' : work.health === 'Warning' ? 'border-amber-500/30 bg-amber-500/10 text-amber-600' : 'border-destructive/30 bg-destructive/10 text-destructive'}`}>
+                          <ShieldAlert className="h-3.5 w-3.5" />
+                          {work.health}
+                        </span>
                         <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 font-semibold ${work.state === 'Done' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600' : work.state === 'In progress' ? 'border-amber-500/30 bg-amber-500/10 text-amber-600' : 'border-muted-foreground/20 bg-muted text-muted-foreground'}`}>
                           {work.state === 'Done' ? <CheckCircle2 className="h-3.5 w-3.5" /> : work.state === 'In progress' ? <PlayCircle className="h-3.5 w-3.5" /> : <CircleDashed className="h-3.5 w-3.5" />}
                           {work.state}
                         </span>
-                        <span className="font-mono text-muted-foreground">{work.progress}% done</span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-muted">
                         <div className="h-full bg-emerald-500 transition-all" style={{ width: `${work.progress}%` }} />
                       </div>
-                      <div className="grid grid-cols-4 gap-2 text-center text-[10px] text-muted-foreground">
+                      <div className="grid grid-cols-5 gap-2 text-center text-[10px] text-muted-foreground">
                         <div className="rounded border bg-background px-2 py-1"><span className="block font-bold text-foreground">{work.notStarted}</span>Left</div>
                         <div className="rounded border bg-background px-2 py-1"><span className="block font-bold text-foreground">{work.inProgress}</span>Doing</div>
                         <div className="rounded border bg-background px-2 py-1"><span className="block font-bold text-foreground">{work.done}</span>Done</div>
+                        <div className={`rounded border px-2 py-1 ${work.blockedTasks > 0 ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'bg-background'}`}><span className="block font-bold">{work.blockedTasks}</span>Blocked</div>
                         <div className={`rounded border px-2 py-1 ${work.overdueTasks > 0 ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'bg-background'}`}><span className="block font-bold">{work.overdueTasks}</span>Late</div>
                       </div>
                     </div>

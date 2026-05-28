@@ -52,6 +52,8 @@ model Task {
   description String?       @db.LongText
   type        String        @default("TASK")
   category    String?
+  priority    String        @default("MEDIUM")
+  blockedReason String?     @db.LongText
   storyPoints Float         @default(0)
   loggedTime  Float         @default(0)
   deadline    DateTime?

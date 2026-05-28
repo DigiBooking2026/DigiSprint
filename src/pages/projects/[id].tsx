@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle } from "lucide-react";
+import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
 import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project } from "@/generated/prisma";
@@ -50,6 +50,17 @@ type ExtendedProject = Project & {
 const isDoneStatus = (name?: string) => /done|closed|complete|cancelled/i.test(name || "");
 const isNotStartedStatus = (name?: string) => /backlog|to do|todo|not started|open/i.test(name || "");
 const isPastDate = (value?: string | Date | null) => Boolean(value && new Date(value) < new Date());
+const isDueSoon = (value?: string | Date | null) => {
+  if (!value || isPastDate(value)) return false;
+  const diff = new Date(value).getTime() - new Date().getTime();
+  return diff <= 2 * 24 * 60 * 60 * 1000;
+};
+const priorityStyles: Record<string, string> = {
+  LOW: "border-slate-400/30 bg-slate-400/10 text-slate-600",
+  MEDIUM: "border-blue-500/30 bg-blue-500/10 text-blue-600",
+  HIGH: "border-amber-500/30 bg-amber-500/10 text-amber-600",
+  CRITICAL: "border-destructive/30 bg-destructive/10 text-destructive",
+};
 
 function SortableTaskCard({ 
   task, 
@@ -83,6 +94,7 @@ function SortableTaskCard({
 
   const currentStatus = statuses.find(s => s.id === task.statusId);
   const assigneeName = task.assignee?.name || task.assignee?.email || "Unassigned";
+  const priority = task.priority || "MEDIUM";
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -128,6 +140,24 @@ function SortableTaskCard({
             <span>{task.storyPoints}h</span>
           </div>
           <CardTitle className={`text-sm font-medium leading-tight ${task.type === 'BUG' ? 'text-destructive' : ''}`}>{task.title}</CardTitle>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${priorityStyles[priority] || priorityStyles.MEDIUM}`}>
+              <Flag className="h-3 w-3" />
+              {priority}
+            </span>
+            {task.deadline && isDueSoon(task.deadline) && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-600">
+                <Clock className="h-3 w-3" />
+                Due soon
+              </span>
+            )}
+            {currentStatus && /blocked/i.test(currentStatus.name) && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold uppercase text-destructive">
+                <ShieldAlert className="h-3 w-3" />
+                Blocked
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div 
@@ -255,6 +285,8 @@ export default function ProjectBoard() {
   const [editPoints, setEditPoints] = useState("");
   const [editDesc, setEditDescription] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
+  const [editPriority, setEditPriority] = useState("MEDIUM");
+  const [editBlockedReason, setEditBlockedReason] = useState("");
   
   // Chat state
   const [commentText, setCommentText] = useState("");
@@ -328,6 +360,8 @@ export default function ProjectBoard() {
       setEditPoints(String(data.storyPoints));
       setEditDescription(data.description || "");
       setEditDeadline(data.deadline ? new Date(data.deadline).toISOString().split('T')[0] : "");
+      setEditPriority(data.priority || "MEDIUM");
+      setEditBlockedReason(data.blockedReason || "");
     }
   };
 
@@ -346,6 +380,8 @@ export default function ProjectBoard() {
         storyPoints: editPoints, 
         description: editDesc,
         deadline: editDeadline || null,
+        priority: editPriority,
+        blockedReason: editBlockedReason || null,
         attachmentIds: selectedTask.attachments?.map(a => a.id) || []
       }),
     });
@@ -384,6 +420,8 @@ export default function ProjectBoard() {
   const [storyPoints, setStoryPoints] = useState("");
   const [statusId, setStatusId] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [priority, setPriority] = useState("MEDIUM");
+  const [blockedReason, setBlockedReason] = useState("");
   const [type, setType] = useState("TASK");
   const [category, setCategory] = useState("General");
   const [assigneeId, setAssigneeId] = useState("unassigned");
@@ -421,6 +459,8 @@ export default function ProjectBoard() {
         projectId,
         type,
         category,
+        priority,
+        blockedReason: blockedReason || null,
         deadline: deadline || null,
         assigneeId: assigneeId === "unassigned" ? null : assigneeId,
         attachmentIds: attachments.map(a => a.id)
@@ -432,19 +472,32 @@ export default function ProjectBoard() {
       setDescription("");
       setStoryPoints("");
       setDeadline("");
+      setPriority("MEDIUM");
+      setBlockedReason("");
       setAttachments([]);
       fetchData();
     }
   };
   
   const updateTaskStatus = async (taskId: string, newStatusId: string) => {
+    const newStatus = statuses.find(status => status.id === newStatusId);
+    const task = tasks.find(item => item.id === taskId);
+    let reason: string | null | undefined;
+    if (newStatus && /blocked/i.test(newStatus.name) && !task?.blockedReason) {
+      reason = window.prompt("Why is this task blocked?")?.trim() || "";
+      if (!reason) {
+        fetchData();
+        return;
+      }
+    }
+
     // Optimistic update
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, statusId: newStatusId } : t));
     
     const res = await fetch(`/api/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ statusId: newStatusId }),
+      body: JSON.stringify({ statusId: newStatusId, blockedReason: reason }),
     });
     
     if (!res.ok) {
@@ -545,8 +598,15 @@ export default function ProjectBoard() {
   const notStartedTasks = tasks.filter(task => isNotStartedStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name)).length;
   const inProgressTasks = Math.max(tasks.length - doneTasks - notStartedTasks, 0);
   const overdueTasks = tasks.filter(task => !isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name) && isPastDate(task.deadline)).length;
+  const dueSoonTasks = tasks.filter(task => !isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name) && isDueSoon(task.deadline)).length;
+  const blockedTasks = tasks.filter(task => /blocked/i.test(statuses.find(s => s.id === task.statusId)?.name || task.status?.name || "")).length;
   const progress = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
   const projectIsOverdue = isPastDate(project?.deadline) && doneTasks !== tasks.length;
+  const projectHealth = overdueTasks > 0 || blockedTasks > 0 || projectIsOverdue
+    ? "Critical"
+    : dueSoonTasks > 0 || progress < 50
+      ? "Warning"
+      : "Healthy";
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - 6);
   weekStart.setHours(0, 0, 0, 0);
@@ -617,7 +677,16 @@ export default function ProjectBoard() {
                     <div className="space-y-2"><Label>Points</Label><Input type="number" step="0.5" required value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} /></div>
                     <div className="space-y-2"><Label>Status</Label><Select required value={statusId} onValueChange={(val) => setStatusId(val || "")}><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
                   </div>
-                  <div className="space-y-2"><Label>Deadline</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Priority</Label><Select value={priority} onValueChange={(val) => setPriority(val || "MEDIUM")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="LOW">Low</SelectItem><SelectItem value="MEDIUM">Medium</SelectItem><SelectItem value="HIGH">High</SelectItem><SelectItem value="CRITICAL">Critical</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-2"><Label>Deadline</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
+                  </div>
+                  {/blocked/i.test(statuses.find(s => s.id === statusId)?.name || "") && (
+                    <div className="space-y-2">
+                      <Label>Blocked Reason</Label>
+                      <Input required value={blockedReason} onChange={(e) => setBlockedReason(e.target.value)} placeholder="What is blocking this task?" />
+                    </div>
+                  )}
                   <div className="space-y-2"><Label>Assign To</Label><Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || "unassigned")}><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}</SelectContent></Select></div>
                   <div className="space-y-2"><Label>Attachments</Label><FileUpload onUploadComplete={(a) => setAttachments([...attachments, a])} /><AttachmentList attachments={attachments} onRemove={(id) => setAttachments(attachments.filter(a => a.id !== id))} /></div>
                   <Button type="submit" className="w-full">Create Task</Button>
@@ -627,7 +696,15 @@ export default function ProjectBoard() {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-3 md:grid-cols-4 xl:grid-cols-6">
+        <div className="mb-6 grid gap-3 md:grid-cols-4 xl:grid-cols-7">
+          <div className={`rounded-lg border p-4 ${projectHealth === "Healthy" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : projectHealth === "Warning" ? "border-amber-500/30 bg-amber-500/10 text-amber-600" : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
+            <div className="flex items-center justify-between text-xs">
+              <span>Health</span>
+              <ShieldAlert className="h-4 w-4" />
+            </div>
+            <div className="mt-2 text-xl font-bold">{projectHealth}</div>
+            <p className="mt-1 text-xs opacity-80">{blockedTasks} blocked, {dueSoonTasks} due soon</p>
+          </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Progress</span>
@@ -722,7 +799,7 @@ export default function ProjectBoard() {
         ) : (
           <div className="flex-1 overflow-auto bg-card border rounded-xl">
              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/50"><th className="text-left p-3">Ticket</th><th className="text-left p-3">Title</th><th className="text-left p-3">Type</th><th className="text-left p-3">Status</th><th className="text-left p-3">Assignee</th><th className="text-center p-3">Points</th><th className="text-right p-3">Actions</th></tr></thead>
+                <thead><tr className="border-b bg-muted/50"><th className="text-left p-3">Ticket</th><th className="text-left p-3">Title</th><th className="text-left p-3">Type</th><th className="text-left p-3">Priority</th><th className="text-left p-3">Status</th><th className="text-left p-3">Assignee</th><th className="text-center p-3">Points</th><th className="text-right p-3">Actions</th></tr></thead>
                 <tbody>
                   {tasks.map(task => {
                     const currentStatus = statuses.find(s => s.id === task.statusId);
@@ -735,9 +812,15 @@ export default function ProjectBoard() {
                               <AlertCircle className="h-3.5 w-3.5 text-destructive animate-pulse" />
                             </span>
                           )}
+                          {task.deadline && isDueSoon(task.deadline) && (
+                            <span title={`Due soon: ${new Date(task.deadline).toLocaleDateString()}`}>
+                              <Clock className="h-3.5 w-3.5 text-amber-500" />
+                            </span>
+                          )}
                         </td>
                         <td className="p-3 font-medium">{task.title}</td>
                         <td className="p-3"><div className="flex items-center gap-1.5">{task.type === 'BUG' ? <Bug className="h-3 w-3 text-destructive" /> : <Code className="h-3 w-3 text-primary" />}<span className="text-xs">{task.type}</span></div></td>
+                        <td className="p-3"><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${priorityStyles[task.priority || "MEDIUM"] || priorityStyles.MEDIUM}`}><Flag className="h-3 w-3" />{task.priority || "MEDIUM"}</span></td>
                         <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.statusId} onValueChange={(val) => updateTaskStatus(task.id, val || "")}><SelectTrigger className="h-8 text-xs w-[140px] font-semibold" style={{ backgroundColor: (currentStatus?.color || '#ccc') + '20', color: currentStatus?.color || '#333', borderLeft: `4px solid ${currentStatus?.color || '#ccc'}` }}><span className="truncate">{currentStatus?.name || "Status"}</span></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>)}</SelectContent></Select></div></td>
                         <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.assigneeId || "unassigned"} onValueChange={(val) => updateTaskAssignee(task.id, val || "unassigned")}><SelectTrigger className="h-8 text-xs w-[150px]"><div className="flex items-center gap-1.5 overflow-hidden"><UserIcon className="h-3 w-3 flex-shrink-0" /><span className="truncate">{users.find(u => u.id === task.assigneeId)?.name || users.find(u => u.id === task.assigneeId)?.email || "Unassigned"}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-xs">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name || u.email}</SelectItem>)}</SelectContent></Select></div></td>
                         <td className="p-3 text-center font-medium">{task.storyPoints}h</td>
@@ -763,6 +846,10 @@ export default function ProjectBoard() {
                   <span className="text-muted-foreground/30">|</span>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${selectedTask?.type === 'BUG' ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-primary/10 text-primary border border-primary/20'}`}>
                     {selectedTask?.type}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${priorityStyles[selectedTask?.priority || "MEDIUM"] || priorityStyles.MEDIUM}`}>
+                    <Flag className="h-3 w-3" />
+                    {selectedTask?.priority || "MEDIUM"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -792,6 +879,26 @@ export default function ProjectBoard() {
                       <Label className="text-xs font-bold text-primary uppercase">Deadline</Label>
                       <Input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Priority</Label>
+                      <Select value={editPriority} onValueChange={(val) => setEditPriority(val || "MEDIUM")}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="LOW">Low</SelectItem>
+                          <SelectItem value="MEDIUM">Medium</SelectItem>
+                          <SelectItem value="HIGH">High</SelectItem>
+                          <SelectItem value="CRITICAL">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/blocked/i.test(selectedTask?.status?.name || "") && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-primary uppercase">Blocked Reason</Label>
+                        <Input required value={editBlockedReason} onChange={(e) => setEditBlockedReason(e.target.value)} placeholder="What is blocking this task?" />
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-primary uppercase">Description</Label>
@@ -832,6 +939,12 @@ export default function ProjectBoard() {
                           )}
                         </div>
                         <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: selectedTask?.description || "<p className='italic text-muted-foreground'>No description provided.</p>" }} />
+                        {/blocked/i.test(selectedTask?.status?.name || "") && (
+                          <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                            <p className="mb-1 flex items-center gap-2 font-bold"><ShieldAlert className="h-4 w-4" /> Blocked reason</p>
+                            <p>{selectedTask?.blockedReason || "No blocked reason was provided."}</p>
+                          </div>
+                        )}
                       </div>
 
                       <div>
