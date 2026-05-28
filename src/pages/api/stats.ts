@@ -65,7 +65,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const periodTasks = tasks.filter(task => task.updatedAt >= from && task.updatedAt <= to);
     const currentOpenTasks = tasks.filter(task => !isDoneStatus(task.status.name));
-    const statusNames = Array.from(new Set(statuses.map(status => status.name)));
+    const uniqueStatuses = statuses.reduce<{ name: string; color: string | null }[]>((items, status) => {
+      if (!items.some(item => item.name === status.name)) {
+        items.push({ name: status.name, color: status.color });
+      }
+      return items;
+    }, []);
+    const statusNames = uniqueStatuses.map(status => status.name);
 
     const developerStats = users.map(user => {
       const assignedPeriodTasks = periodTasks.filter(task => task.assigneeId === user.id);
@@ -138,7 +144,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       from: from.toISOString().split("T")[0],
       to: to.toISOString().split("T")[0],
-      statuses: statuses.map(status => ({ name: status.name, color: status.color })),
+      statuses: uniqueStatuses,
       totals,
       developers: developerStats,
     });
