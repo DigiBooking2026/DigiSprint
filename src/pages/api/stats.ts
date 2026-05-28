@@ -37,6 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const [users, statuses, tasks] = await Promise.all([
       prisma.user.findMany({
+        where: { role: "USER" },
         select: { id: true, name: true, email: true },
         orderBy: [{ name: "asc" }, { email: "asc" }],
       }),
