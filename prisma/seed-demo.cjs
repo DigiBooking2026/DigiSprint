@@ -48,10 +48,10 @@ function dateFromToday(days) {
 async function ensureUsers() {
   const hashedPassword = await bcrypt.hash("demo1234", 10);
   const users = [
-    { email: "admin.demo@digibooking.local", name: "Demo Admin", role: "ADMIN" },
-    { email: "frontend.demo@digibooking.local", name: "Frontend Dev", role: "USER" },
-    { email: "backend.demo@digibooking.local", name: "Backend Dev", role: "USER" },
-    { email: "qa.demo@digibooking.local", name: "QA Engineer", role: "USER" },
+    { email: "admin.demo@digibooking.local", name: "محمد بن علي", role: "ADMIN" },
+    { email: "frontend.demo@digibooking.local", name: "أحمد الهاشمي", role: "USER" },
+    { email: "backend.demo@digibooking.local", name: "ليلى منصور", role: "USER" },
+    { email: "qa.demo@digibooking.local", name: "سارة بن يوسف", role: "USER" },
   ];
 
   const created = [];
@@ -121,6 +121,7 @@ const templates = [
 
 async function main() {
   const users = await ensureUsers();
+  const fallbackAssignee = users.find(user => user.role === "USER") || users[0];
 
   const existingDemoProjects = await prisma.project.findMany({
     where: { prefix: { in: demoPrefixes } },
@@ -170,7 +171,8 @@ async function main() {
 
     for (const [index, task] of template.tasks.entries()) {
       const status = project.statuses.find(item => item.name === task.status) || project.statuses[0];
-      const assignee = users[task.assignee % users.length];
+      const selectedAssignee = users[task.assignee % users.length];
+      const assignee = selectedAssignee.role === "USER" ? selectedAssignee : fallbackAssignee;
       const createdTask = await prisma.task.create({
         data: {
           ticketId: `${project.prefix}-${index + 1}`,
@@ -185,7 +187,7 @@ async function main() {
           deadline: dateFromToday(task.due),
           statusId: status.id,
           projectId: project.id,
-          ownerId: users[0].id,
+          ownerId: assignee.id,
           assigneeId: assignee.id,
         },
       });
@@ -193,7 +195,7 @@ async function main() {
       await prisma.taskHistory.create({
         data: {
           taskId: createdTask.id,
-          userId: users[0].id,
+          userId: assignee.id,
           oldStatus: null,
           newStatus: status.name,
         },

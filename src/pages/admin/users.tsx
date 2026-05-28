@@ -26,7 +26,19 @@ export default function AdminUsers() {
   };
 
   useEffect(() => {
-    fetchUsers();
+    let isMounted = true;
+
+    fetch("/api/admin/users")
+      .then(async (res) => {
+        if (res.ok && isMounted) setUsers(await res.json());
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const updateRole = async (userId: string, role: string) => {
@@ -122,7 +134,7 @@ export default function AdminUsers() {
           </DialogHeader>
           <div className="py-4">
             <p className="text-muted-foreground">
-              Are you sure you want to delete <span className="font-semibold text-foreground">"{userToDelete?.email}"</span>?
+              Are you sure you want to delete <span className="font-semibold text-foreground">&quot;{userToDelete?.email}&quot;</span>?
             </p>
             <p className="text-sm text-muted-foreground/80 mt-2">
               This action is permanent and will remove all their access to DigiSprint.

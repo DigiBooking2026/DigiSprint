@@ -596,6 +596,12 @@ export default function ProjectBoard() {
   };
 
   if (!router.isReady) return null;
+  const getUserDisplay = (userId?: string | null, fallback = "Unassigned", fallbackUser?: User | null) => {
+    const user = users.find(u => u.id === userId) || fallbackUser;
+    return user?.name || user?.email || fallback;
+  };
+  const selectedAssigneeLabel = assigneeId === "unassigned" ? "Unassigned" : getUserDisplay(assigneeId);
+  const selectedOwnerLabel = getUserDisplay(editOwnerId, "Select owner");
   const totalStoryPoints = tasks.reduce((sum, task) => sum + (task.storyPoints || 0), 0);
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
   const doneTasks = tasks.filter(task => isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name)).length;
@@ -691,7 +697,7 @@ export default function ProjectBoard() {
                       <Input required value={blockedReason} onChange={(e) => setBlockedReason(e.target.value)} placeholder="What is blocking this task?" />
                     </div>
                   )}
-                  <div className="space-y-2"><Label>Assign To</Label><Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || "unassigned")}><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-2"><Label>Assign To</Label><Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || "unassigned")}><SelectTrigger><div className="flex min-w-0 items-center gap-1.5"><UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate">{selectedAssigneeLabel}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}</SelectContent></Select></div>
                   <div className="space-y-2"><Label>Attachments</Label><FileUpload onUploadComplete={(a) => setAttachments([...attachments, a])} /><AttachmentList attachments={attachments} onRemove={(id) => setAttachments(attachments.filter(a => a.id !== id))} /></div>
                   <Button type="submit" className="w-full">Create Task</Button>
                 </form>
@@ -826,7 +832,7 @@ export default function ProjectBoard() {
                         <td className="p-3"><div className="flex items-center gap-1.5">{task.type === 'BUG' ? <Bug className="h-3 w-3 text-destructive" /> : <Code className="h-3 w-3 text-primary" />}<span className="text-xs">{task.type}</span></div></td>
                         <td className="p-3"><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${priorityStyles[task.priority || "MEDIUM"] || priorityStyles.MEDIUM}`}><Flag className="h-3 w-3" />{task.priority || "MEDIUM"}</span></td>
                         <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.statusId} onValueChange={(val) => updateTaskStatus(task.id, val || "")}><SelectTrigger className="h-8 text-xs w-[140px] font-semibold" style={{ backgroundColor: (currentStatus?.color || '#ccc') + '20', color: currentStatus?.color || '#333', borderLeft: `4px solid ${currentStatus?.color || '#ccc'}` }}><span className="truncate">{currentStatus?.name || "Status"}</span></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>)}</SelectContent></Select></div></td>
-                        <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.assigneeId || "unassigned"} onValueChange={(val) => updateTaskAssignee(task.id, val || "unassigned")}><SelectTrigger className="h-8 text-xs w-[150px]"><div className="flex items-center gap-1.5 overflow-hidden"><UserIcon className="h-3 w-3 flex-shrink-0" /><span className="truncate">{users.find(u => u.id === task.assigneeId)?.name || users.find(u => u.id === task.assigneeId)?.email || "Unassigned"}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-xs">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name || u.email}</SelectItem>)}</SelectContent></Select></div></td>
+                        <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.assigneeId || "unassigned"} onValueChange={(val) => updateTaskAssignee(task.id, val || "unassigned")}><SelectTrigger className="h-8 text-xs w-[150px]"><div className="flex items-center gap-1.5 overflow-hidden"><UserIcon className="h-3 w-3 flex-shrink-0" /><span className="truncate">{getUserDisplay(task.assigneeId, "Unassigned", task.assignee)}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-xs">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name || u.email}</SelectItem>)}</SelectContent></Select></div></td>
                         <td className="p-3 text-center font-medium">{task.storyPoints}h</td>
                         <td className="p-3 text-right"><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); showConfirm("Delete?", `Delete ${task.title}?`, () => deleteTask(task.id)); }}><Trash2 className="h-4 w-4" /></Button></td>
                       </tr>
@@ -904,7 +910,7 @@ export default function ProjectBoard() {
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Owner</Label>
                       <Select value={editOwnerId} onValueChange={(val) => setEditOwnerId(val || "")}>
-                        <SelectTrigger><SelectValue placeholder="Select owner" /></SelectTrigger>
+                        <SelectTrigger><div className="flex min-w-0 items-center gap-1.5"><UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate">{getUserDisplay(editOwnerId, selectedOwnerLabel, selectedTask?.owner)}</span></div></SelectTrigger>
                         <SelectContent>
                           {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}
                         </SelectContent>
