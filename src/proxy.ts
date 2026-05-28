@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 
 export default async function proxy(request: NextRequest) {
-  const publicPaths = ['/login', '/register', '/api/auth/login', '/api/auth/register', '/api/auth/logout']
+  const publicPaths = ['/login', '/register', '/logo.png', '/api/auth/login', '/api/auth/register', '/api/auth/logout']
   
   const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))
 

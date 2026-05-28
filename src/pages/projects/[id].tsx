@@ -617,6 +617,17 @@ export default function ProjectBoard() {
     : dueSoonTasks > 0 || progress < 50
       ? "Warning"
       : "Healthy";
+  const projectHealthReason = projectIsOverdue
+    ? "Project deadline passed"
+    : overdueTasks > 0
+      ? `${overdueTasks} open task${overdueTasks === 1 ? "" : "s"} late`
+      : blockedTasks > 0
+        ? `${blockedTasks} blocked task${blockedTasks === 1 ? "" : "s"}`
+        : dueSoonTasks > 0
+          ? `${dueSoonTasks} task${dueSoonTasks === 1 ? "" : "s"} due soon`
+          : progress < 50
+            ? `Progress under 50% (${progress}%)`
+            : "No active risk";
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - 6);
   weekStart.setHours(0, 0, 0, 0);
@@ -713,7 +724,7 @@ export default function ProjectBoard() {
               <ShieldAlert className="h-4 w-4" />
             </div>
             <div className="mt-2 text-xl font-bold">{projectHealth}</div>
-            <p className="mt-1 text-xs opacity-80">{blockedTasks} blocked, {dueSoonTasks} due soon</p>
+            <p className="mt-1 text-xs opacity-80">{projectHealthReason}; {blockedTasks} blocked, {dueSoonTasks} due soon</p>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-center justify-between text-xs text-muted-foreground">

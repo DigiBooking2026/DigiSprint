@@ -42,14 +42,26 @@ function getProjectWorkState(project: ProjectWithWork) {
   const dueSoonTasks = tasks.filter(task => !isDoneStatus(task.status?.name) && isDueSoon(task.deadline)).length;
   const blockedTasks = tasks.filter(task => /blocked/i.test(task.status?.name || "")).length;
   const progress = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  const projectIsOverdue = isPastDate(project.deadline) && done !== tasks.length;
   const state = tasks.length === 0 ? "Not started" : done === tasks.length ? "Done" : inProgress > 0 ? "In progress" : "Not started";
-  const health = overdueTasks > 0 || blockedTasks > 0
+  const health = projectIsOverdue || overdueTasks > 0 || blockedTasks > 0
     ? "Critical"
     : dueSoonTasks > 0 || progress < 50
       ? "Warning"
       : "Healthy";
+  const healthReason = projectIsOverdue
+    ? "Project deadline passed"
+    : overdueTasks > 0
+      ? `${overdueTasks} open task${overdueTasks === 1 ? "" : "s"} late`
+      : blockedTasks > 0
+        ? `${blockedTasks} blocked task${blockedTasks === 1 ? "" : "s"}`
+        : dueSoonTasks > 0
+          ? `${dueSoonTasks} task${dueSoonTasks === 1 ? "" : "s"} due soon`
+          : progress < 50
+            ? `Progress under 50% (${progress}%)`
+            : "No active risk";
 
-  return { done, notStarted, inProgress, overdueTasks, dueSoonTasks, blockedTasks, progress, state, health };
+  return { done, notStarted, inProgress, overdueTasks, dueSoonTasks, blockedTasks, progress, state, health, healthReason };
 }
 
 export default function Dashboard() {
@@ -339,6 +351,7 @@ export default function Dashboard() {
                           {work.state}
                         </span>
                       </div>
+                      <p className="text-xs text-muted-foreground">{work.healthReason}</p>
                       <div className="h-2 overflow-hidden rounded-full bg-muted">
                         <div className="h-full bg-emerald-500 transition-all" style={{ width: `${work.progress}%` }} />
                       </div>
