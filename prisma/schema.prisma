@@ -33,6 +33,8 @@ model Project {
   name        String
   description String?      @db.LongText
   prefix      String       @default("DB")
+  startDate   DateTime?
+  deadline    DateTime?
   deletedAt   DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt

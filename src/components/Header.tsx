@@ -31,16 +31,21 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
-            <img 
+            <Image 
               src="/logo.png" 
               alt="DigiSprint Logo" 
-              style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+              width={32}
+              height={32}
+              style={{ objectFit: 'contain' }}
             />
             <span>DigiSprint</span>
           </Link>
           <nav className="hidden md:flex gap-4">
             <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Projects
+            </Link>
+            <Link href="/stats" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              Stats
             </Link>
             {user?.role === 'ADMIN' && (
               <Link href="/admin/users" className="text-sm font-medium text-muted-foreground hover:text-foreground">

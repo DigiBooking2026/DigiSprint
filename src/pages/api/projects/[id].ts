@@ -9,6 +9,70 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { id } = req.query;
   const projectId = String(id);
 
+  if (req.method === 'GET') {
+    try {
+      const project = await prisma.project.findFirst({
+        where: { id: projectId, deletedAt: null },
+        include: {
+          attachments: true,
+          statuses: true,
+          tasks: {
+            include: {
+              status: true,
+              assignee: { select: { id: true, name: true, email: true } },
+            },
+          },
+        },
+      });
+
+      if (!project) return res.status(404).json({ error: "Project not found" });
+      return res.status(200).json(project);
+    } catch (error) {
+      console.error("GET project error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  if (req.method === 'PATCH') {
+    try {
+      const { name, description, prefix, startDate, deadline, attachmentIds } = req.body;
+      if (!name || !prefix) return res.status(400).json({ error: "Name and Prefix are required" });
+      if (!startDate || !deadline) return res.status(400).json({ error: "Start date and deadline are required" });
+
+      const project = await prisma.project.update({
+        where: { id: projectId },
+        data: {
+          name,
+          description,
+          prefix,
+          startDate: new Date(startDate),
+          deadline: new Date(deadline),
+          attachments: attachmentIds
+            ? { set: attachmentIds.map((id: string) => ({ id })) }
+            : undefined,
+        },
+        include: {
+          _count: { select: { tasks: true } },
+          attachments: true,
+          statuses: true,
+          tasks: {
+            select: {
+              id: true,
+              deadline: true,
+              status: { select: { name: true } },
+              assignee: { select: { id: true, name: true, email: true } },
+            },
+          },
+        },
+      });
+
+      return res.status(200).json(project);
+    } catch (error) {
+      console.error("PATCH project error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
   if (req.method === 'DELETE') {
     try {
       if (session.role !== 'ADMIN') {

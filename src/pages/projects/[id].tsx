@@ -10,23 +10,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Tag, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History } from "lucide-react";
+import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
-import { Task, TaskStatus, User, Attachment, Comment, TaskHistory } from "@/generated/prisma";
+import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project } from "@/generated/prisma";
 import {
   DndContext,
-  closestCorners,
+  DragEndEvent,
+  DragOverEvent,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
   useSensor,
   useSensors,
   DragOverlay,
-  defaultDropAnimationSideEffects,
   useDroppable,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
@@ -36,25 +36,31 @@ import { CSS } from "@dnd-kit/utilities";
 
 type ExtendedTask = Task & { 
   assignee?: User | null, 
+  status?: TaskStatus | null,
   attachments?: Attachment[],
   comments?: (Comment & { user: User, attachments: Attachment[] })[],
   history?: (TaskHistory & { user: User })[]
 };
 
+type ExtendedProject = Project & {
+  tasks?: ExtendedTask[];
+  statuses?: TaskStatus[];
+};
+
+const isDoneStatus = (name?: string) => /done|closed|complete|cancelled/i.test(name || "");
+const isNotStartedStatus = (name?: string) => /backlog|to do|todo|not started|open/i.test(name || "");
+const isPastDate = (value?: string | Date | null) => Boolean(value && new Date(value) < new Date());
+
 function SortableTaskCard({ 
   task, 
-  users, 
   statuses, 
-  updateTaskAssignee, 
   updateTaskStatus,
   showConfirm,
   deleteTask,
   onOpenTask
 }: { 
   task: ExtendedTask,
-  users: User[],
   statuses: TaskStatus[],
-  updateTaskAssignee: (taskId: string, newAssigneeId: string) => void,
   updateTaskStatus: (taskId: string, newStatusId: string) => void,
   showConfirm: (title: string, message: string, onConfirm: () => void) => void,
   deleteTask: (taskId: string) => void,
@@ -76,6 +82,7 @@ function SortableTaskCard({
   };
 
   const currentStatus = statuses.find(s => s.id === task.statusId);
+  const assigneeName = task.assignee?.name || task.assignee?.email || "Unassigned";
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -91,7 +98,7 @@ function SortableTaskCard({
               className="h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => {
                 e.stopPropagation();
-                showConfirm("Delete Task?", `Are you sure you want to delete "${task.title}"?`, () => deleteTask(task.id));
+                showConfirm("Delete Task?", `Are you sure you want to delete ${task.title}?`, () => deleteTask(task.id));
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -112,6 +119,11 @@ function SortableTaskCard({
                 <Code className="h-3 w-3 text-primary" />
               )}
               <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">{task.ticketId}</span>
+              {task.deadline && new Date(task.deadline) < new Date() && (
+                <span title={`Overdue: ${new Date(task.deadline).toLocaleDateString()}`}>
+                  <AlertCircle className="h-3.5 w-3.5 text-destructive animate-pulse" />
+                </span>
+              )}
             </div>
             <span>{task.storyPoints}h</span>
           </div>
@@ -123,6 +135,11 @@ function SortableTaskCard({
             dangerouslySetInnerHTML={{ __html: task.description || "" }}
           />
           
+          <div className="mb-3 flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
+            <UserIcon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Assigned to {assigneeName}</span>
+          </div>
+
           <div className="flex items-center gap-3 mt-auto">
             {task.attachments && task.attachments.length > 0 && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -159,9 +176,7 @@ function SortableTaskCard({
 function DroppableStatusColumn({ 
   status, 
   columnTasks, 
-  users, 
   statuses, 
-  updateTaskAssignee, 
   updateTaskStatus,
   showConfirm,
   deleteTask,
@@ -169,9 +184,7 @@ function DroppableStatusColumn({
 }: { 
   status: TaskStatus, 
   columnTasks: ExtendedTask[],
-  users: User[],
   statuses: TaskStatus[],
-  updateTaskAssignee: (taskId: string, newAssigneeId: string) => void,
   updateTaskStatus: (taskId: string, newStatusId: string) => void,
   showConfirm: (title: string, message: string, onConfirm: () => void) => void,
   deleteTask: (taskId: string) => void,
@@ -183,7 +196,6 @@ function DroppableStatusColumn({
 
   return (
     <div 
-      ref={setNodeRef}
       className={`min-w-[300px] w-[300px] flex flex-col bg-muted/30 rounded-xl p-3 transition-colors ${isOver ? 'bg-primary/5 ring-2 ring-primary/20' : ''}`}
     >
       <div className="flex justify-between items-center mb-4 px-1">
@@ -197,14 +209,12 @@ function DroppableStatusColumn({
         items={columnTasks.map(t => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex-1 flex flex-col gap-2.5 overflow-y-auto min-h-[250px] scrollbar-none">
+        <div ref={setNodeRef} className="flex-1 flex flex-col gap-2.5 overflow-y-auto min-h-[250px] rounded-lg scrollbar-none">
           {columnTasks.map(task => (
             <SortableTaskCard 
               key={task.id} 
               task={task} 
-              users={users} 
               statuses={statuses}
-              updateTaskAssignee={updateTaskAssignee}
               updateTaskStatus={updateTaskStatus}
               showConfirm={showConfirm}
               deleteTask={deleteTask}
@@ -230,11 +240,13 @@ export default function ProjectBoard() {
   const [statuses, setStatuses] = useState<TaskStatus[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [project, setProject] = useState<ExtendedProject | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dragStartStatus, setDragStartStatus] = useState<string | null>(null);
+  const [lastOverStatus, setLastOverStatus] = useState<string | null>(null);
 
   // Task Details Modal
   const [selectedTask, setSelectedTask] = useState<ExtendedTask | null>(null);
@@ -242,6 +254,7 @@ export default function ProjectBoard() {
   const [editTitle, setEditTitle] = useState("");
   const [editPoints, setEditPoints] = useState("");
   const [editDesc, setEditDescription] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
   
   // Chat state
   const [commentText, setCommentText] = useState("");
@@ -276,17 +289,19 @@ export default function ProjectBoard() {
   const fetchData = useCallback(async () => {
     if (!projectId) return;
     try {
-      const [tasksRes, statusesRes, usersRes, meRes] = await Promise.all([
+      const [tasksRes, statusesRes, usersRes, meRes, projectRes] = await Promise.all([
         fetch(`/api/tasks?projectId=${projectId}`),
         fetch(`/api/statuses?projectId=${projectId}`),
         fetch("/api/users"),
-        fetch("/api/auth/me")
+        fetch("/api/auth/me"),
+        fetch(`/api/projects/${projectId}`)
       ]);
       
       if (tasksRes.ok) setTasks(await tasksRes.json());
       if (statusesRes.ok) setStatuses(await statusesRes.json());
       if (usersRes.ok) setUsers(await usersRes.json());
       if (meRes.ok) setCurrentUser(await meRes.json());
+      if (projectRes.ok) setProject(await projectRes.json());
     } catch (error) {
       console.error("Fetch data error:", error);
     } finally {
@@ -295,6 +310,7 @@ export default function ProjectBoard() {
   }, [projectId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (router.isReady) fetchData();
   }, [fetchData, router.isReady]);
 
@@ -311,6 +327,7 @@ export default function ProjectBoard() {
       setEditTitle(data.title);
       setEditPoints(String(data.storyPoints));
       setEditDescription(data.description || "");
+      setEditDeadline(data.deadline ? new Date(data.deadline).toISOString().split('T')[0] : "");
     }
   };
 
@@ -327,7 +344,9 @@ export default function ProjectBoard() {
       body: JSON.stringify({ 
         title: editTitle, 
         storyPoints: editPoints, 
-        description: editDesc 
+        description: editDesc,
+        deadline: editDeadline || null,
+        attachmentIds: selectedTask.attachments?.map(a => a.id) || []
       }),
     });
     if (res.ok) {
@@ -364,6 +383,7 @@ export default function ProjectBoard() {
   const [description, setDescription] = useState("");
   const [storyPoints, setStoryPoints] = useState("");
   const [statusId, setStatusId] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [type, setType] = useState("TASK");
   const [category, setCategory] = useState("General");
   const [assigneeId, setAssigneeId] = useState("unassigned");
@@ -401,6 +421,7 @@ export default function ProjectBoard() {
         projectId,
         type,
         category,
+        deadline: deadline || null,
         assigneeId: assigneeId === "unassigned" ? null : assigneeId,
         attachmentIds: attachments.map(a => a.id)
       }),
@@ -410,20 +431,31 @@ export default function ProjectBoard() {
       setTitle("");
       setDescription("");
       setStoryPoints("");
+      setDeadline("");
       setAttachments([]);
       fetchData();
     }
   };
   
   const updateTaskStatus = async (taskId: string, newStatusId: string) => {
+    // Optimistic update
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, statusId: newStatusId } : t));
+    
     const res = await fetch(`/api/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ statusId: newStatusId }),
     });
-    if (!res.ok) fetchData();
-    else if (selectedTask?.id === taskId) fetchTaskDetails(taskId);
+    
+    if (!res.ok) {
+      // Revert on error
+      fetchData();
+    } else {
+      // Sync other parts if needed
+      if (selectedTask?.id === taskId) fetchTaskDetails(taskId);
+      // We don't call fetchData() here to avoid flicker since we already did optimistic update
+      // But we might want to refresh to get updated history etc.
+    }
   };
 
   const updateTaskAssignee = async (taskId: string, newAssigneeId: string) => {
@@ -443,7 +475,7 @@ export default function ProjectBoard() {
     if (res.ok) fetchData();
   };
 
-  const handleDragOver = (event: any) => {
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) return;
 
@@ -454,6 +486,7 @@ export default function ProjectBoard() {
 
     if (overId.startsWith('status-')) {
       const newStatusId = overId.replace('status-', '');
+      setLastOverStatus(newStatusId);
       if (activeTask.statusId !== newStatusId) {
         setTasks(prev => prev.map(t => t.id === active.id ? { ...t, statusId: newStatusId } : t));
       }
@@ -462,33 +495,77 @@ export default function ProjectBoard() {
 
     const overTask = tasks.find(t => t.id === over.id);
     if (overTask && activeTask.statusId !== overTask.statusId) {
+      setLastOverStatus(overTask.statusId);
       setTasks(prev => prev.map(t => t.id === active.id ? { ...t, statusId: overTask.statusId } : t));
     }
   };
 
-  const handleDragEnd = async (event: any) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
-    if (!over) { fetchData(); return; }
+    
+    if (!over) {
+      const activeTask = tasks.find(t => t.id === String(active.id));
+      const fallbackStatus = lastOverStatus || activeTask?.statusId || null;
+      if (fallbackStatus && dragStartStatus !== fallbackStatus) {
+        await updateTaskStatus(String(active.id), fallbackStatus);
+      } else {
+        fetchData();
+      }
+      setDragStartStatus(null);
+      setLastOverStatus(null);
+      return; 
+    }
 
-    const activeTask = tasks.find(t => t.id === active.id);
-    let newStatusId: string | null = null;
     const overId = String(over.id);
+    let newStatusId: string | null = null;
 
-    if (overId.startsWith('status-')) newStatusId = overId.replace('status-', '');
-    else {
+    if (overId.startsWith('status-')) {
+      newStatusId = overId.replace('status-', '');
+    } else {
       const overTask = tasks.find(t => t.id === over.id);
       if (overTask) newStatusId = overTask.statusId;
     }
 
-    if (activeTask && newStatusId && dragStartStatus !== newStatusId) await updateTaskStatus(activeTask.id, newStatusId);
-    else fetchData();
+    if (newStatusId && dragStartStatus !== newStatusId) {
+      await updateTaskStatus(String(active.id), newStatusId);
+    } else {
+      // Re-sort within same column or if dropped on same column
+      fetchData();
+    }
+    
     setDragStartStatus(null);
+    setLastOverStatus(null);
   };
 
   if (!router.isReady) return null;
   const totalStoryPoints = tasks.reduce((sum, task) => sum + (task.storyPoints || 0), 0);
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
+  const doneTasks = tasks.filter(task => isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name)).length;
+  const notStartedTasks = tasks.filter(task => isNotStartedStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name)).length;
+  const inProgressTasks = Math.max(tasks.length - doneTasks - notStartedTasks, 0);
+  const overdueTasks = tasks.filter(task => !isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name) && isPastDate(task.deadline)).length;
+  const progress = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
+  const projectIsOverdue = isPastDate(project?.deadline) && doneTasks !== tasks.length;
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
+  const weeklyTouchedTasks = tasks.filter(task => new Date(task.updatedAt) >= weekStart);
+  const assigneeWork = users
+    .map(user => {
+      const assigned = tasks.filter(task => task.assigneeId === user.id);
+      const active = assigned.filter(task => !isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name));
+      return {
+        user,
+        active: active.length,
+        done: assigned.length - active.length,
+        hours: active.reduce((sum, task) => sum + (task.storyPoints || 0), 0),
+        overdue: active.filter(task => isPastDate(task.deadline)).length,
+      };
+    })
+    .filter(item => item.active > 0 || item.done > 0)
+    .sort((a, b) => b.active - a.active || b.hours - a.hours)
+    .slice(0, 6);
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/20">
@@ -496,9 +573,15 @@ export default function ProjectBoard() {
       <main className="flex-1 container mx-auto px-4 py-8 flex flex-col h-[calc(100vh-64px)]">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Project Board</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{project?.name || "Project Board"}</h1>
             <p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
               <Clock className="h-4 w-4" /> Total Story Points: <span className="font-semibold text-foreground">{totalStoryPoints} hrs</span>
+              {projectIsOverdue && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold uppercase text-destructive">
+                  <AlertCircle className="h-3 w-3" />
+                  Project overdue
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -534,6 +617,7 @@ export default function ProjectBoard() {
                     <div className="space-y-2"><Label>Points</Label><Input type="number" step="0.5" required value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} /></div>
                     <div className="space-y-2"><Label>Status</Label><Select required value={statusId} onValueChange={(val) => setStatusId(val || "")}><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
                   </div>
+                  <div className="space-y-2"><Label>Deadline</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
                   <div className="space-y-2"><Label>Assign To</Label><Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || "unassigned")}><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}</SelectContent></Select></div>
                   <div className="space-y-2"><Label>Attachments</Label><FileUpload onUploadComplete={(a) => setAttachments([...attachments, a])} /><AttachmentList attachments={attachments} onRemove={(id) => setAttachments(attachments.filter(a => a.id !== id))} /></div>
                   <Button type="submit" className="w-full">Create Task</Button>
@@ -543,15 +627,94 @@ export default function ProjectBoard() {
           </div>
         </div>
 
+        <div className="mb-6 grid gap-3 md:grid-cols-4 xl:grid-cols-6">
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Progress</span>
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            </div>
+            <div className="mt-2 text-2xl font-bold">{progress}%</div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Not Started</span>
+              <CircleDashed className="h-4 w-4" />
+            </div>
+            <div className="mt-2 text-2xl font-bold">{notStartedTasks}</div>
+            <p className="mt-1 text-xs text-muted-foreground">tasks waiting</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>In Progress</span>
+              <PlayCircle className="h-4 w-4 text-amber-500" />
+            </div>
+            <div className="mt-2 text-2xl font-bold">{inProgressTasks}</div>
+            <p className="mt-1 text-xs text-muted-foreground">active tasks</p>
+          </div>
+          <div className={`rounded-lg border p-4 ${overdueTasks > 0 || projectIsOverdue ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'bg-card'}`}>
+            <div className="flex items-center justify-between text-xs">
+              <span>Overdue</span>
+              <AlertCircle className="h-4 w-4" />
+            </div>
+            <div className="mt-2 text-2xl font-bold">{overdueTasks}</div>
+            <p className="mt-1 text-xs opacity-80">late open tasks</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>This Week</span>
+              <CalendarDays className="h-4 w-4" />
+            </div>
+            <div className="mt-2 text-2xl font-bold">{weeklyTouchedTasks.length}</div>
+            <p className="mt-1 text-xs text-muted-foreground">tasks updated</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Deadline</span>
+              <Clock className="h-4 w-4" />
+            </div>
+            <div className="mt-2 text-sm font-bold">{project?.deadline ? new Date(project.deadline).toLocaleDateString() : "Not set"}</div>
+            <p className="mt-1 text-xs text-muted-foreground">{project?.startDate ? `Started ${new Date(project.startDate).toLocaleDateString()}` : "No start date"}</p>
+          </div>
+        </div>
+
+        {assigneeWork.length > 0 && (
+          <div className="mb-6 rounded-lg border bg-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-bold">Developer workload</h2>
+              <span className="text-xs text-muted-foreground">Open work and overdue tasks by assignee</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {assigneeWork.map(item => (
+                <div key={item.user.id} className="rounded-md border bg-background p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{item.user.name || item.user.email}</p>
+                      <p className="text-xs text-muted-foreground">{item.hours}h open estimate</p>
+                    </div>
+                    {item.overdue > 0 && <span className="rounded-full bg-destructive/10 px-2 py-1 text-[10px] font-bold text-destructive">{item.overdue} late</span>}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs">
+                    <div className="rounded bg-muted px-2 py-1"><span className="font-bold">{item.active}</span> active</div>
+                    <div className="rounded bg-muted px-2 py-1"><span className="font-bold">{item.done}</span> done</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex-1 flex justify-center items-center">Loading board...</div>
         ) : statuses.length === 0 ? (
           <div className="flex-1 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground"><p>No statuses available.</p></div>
         ) : viewMode === "kanban" ? (
-          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={(e) => {setActiveId(String(e.active.id)); setDragStartStatus(tasks.find(t => t.id === String(e.active.id))?.statusId || null)}} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={(e) => {setActiveId(String(e.active.id)); setDragStartStatus(tasks.find(t => t.id === String(e.active.id))?.statusId || null); setLastOverStatus(null)}} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
             <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
               {statuses.map(status => (
-                <DroppableStatusColumn key={status.id} status={status} columnTasks={tasks.filter(t => t.statusId === status.id)} users={users} statuses={statuses} updateTaskAssignee={updateTaskAssignee} updateTaskStatus={updateTaskStatus} showConfirm={showConfirm} deleteTask={deleteTask} onOpenTask={handleOpenTask} />
+                <DroppableStatusColumn key={status.id} status={status} columnTasks={tasks.filter(t => t.statusId === status.id)} statuses={statuses} updateTaskStatus={updateTaskStatus} showConfirm={showConfirm} deleteTask={deleteTask} onOpenTask={handleOpenTask} />
               ))}
             </div>
             <DragOverlay>{activeTask ? <div className="w-[280px]"><Card className={`border-l-4 ${activeTask.type === 'BUG' ? 'border-l-destructive' : 'border-l-primary'} shadow-2xl`}><CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-medium">{activeTask.title}</CardTitle></CardHeader></Card></div> : null}</DragOverlay>
@@ -565,13 +728,20 @@ export default function ProjectBoard() {
                     const currentStatus = statuses.find(s => s.id === task.statusId);
                     return (
                       <tr key={task.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleOpenTask(task)}>
-                        <td className="p-3 font-mono text-xs text-muted-foreground">{task.ticketId}</td>
+                        <td className="p-3 font-mono text-xs text-muted-foreground flex items-center gap-2">
+                          {task.ticketId}
+                          {task.deadline && new Date(task.deadline) < new Date() && (
+                            <span title={`Overdue: ${new Date(task.deadline).toLocaleDateString()}`}>
+                              <AlertCircle className="h-3.5 w-3.5 text-destructive animate-pulse" />
+                            </span>
+                          )}
+                        </td>
                         <td className="p-3 font-medium">{task.title}</td>
                         <td className="p-3"><div className="flex items-center gap-1.5">{task.type === 'BUG' ? <Bug className="h-3 w-3 text-destructive" /> : <Code className="h-3 w-3 text-primary" />}<span className="text-xs">{task.type}</span></div></td>
                         <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.statusId} onValueChange={(val) => updateTaskStatus(task.id, val || "")}><SelectTrigger className="h-8 text-xs w-[140px] font-semibold" style={{ backgroundColor: (currentStatus?.color || '#ccc') + '20', color: currentStatus?.color || '#333', borderLeft: `4px solid ${currentStatus?.color || '#ccc'}` }}><span className="truncate">{currentStatus?.name || "Status"}</span></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>)}</SelectContent></Select></div></td>
                         <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.assigneeId || "unassigned"} onValueChange={(val) => updateTaskAssignee(task.id, val || "unassigned")}><SelectTrigger className="h-8 text-xs w-[150px]"><div className="flex items-center gap-1.5 overflow-hidden"><UserIcon className="h-3 w-3 flex-shrink-0" /><span className="truncate">{users.find(u => u.id === task.assigneeId)?.name || users.find(u => u.id === task.assigneeId)?.email || "Unassigned"}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-xs">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name || u.email}</SelectItem>)}</SelectContent></Select></div></td>
                         <td className="p-3 text-center font-medium">{task.storyPoints}h</td>
-                        <td className="p-3 text-right"><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); showConfirm("Delete?", `Delete "${task.title}"?`, () => deleteTask(task.id)); }}><Trash2 className="h-4 w-4" /></Button></td>
+                        <td className="p-3 text-right"><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); showConfirm("Delete?", `Delete ${task.title}?`, () => deleteTask(task.id)); }}><Trash2 className="h-4 w-4" /></Button></td>
                       </tr>
                     );
                   })}
@@ -618,10 +788,22 @@ export default function ProjectBoard() {
                       <Label className="text-xs font-bold text-primary uppercase">Story Points (hrs)</Label>
                       <Input type="number" step="0.5" value={editPoints} onChange={(e) => setEditPoints(e.target.value)} />
                     </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Deadline</Label>
+                      <Input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-primary uppercase">Description</Label>
                     <RichTextEditor content={editDesc} onChange={setEditDescription} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-primary uppercase">Attachments</Label>
+                    <FileUpload taskId={selectedTask?.id} onUploadComplete={(a) => setSelectedTask(prev => prev ? { ...prev, attachments: [...(prev.attachments || []), a] } : null)} />
+                    <AttachmentList 
+                      attachments={selectedTask?.attachments || []} 
+                      onRemove={(id) => setSelectedTask(prev => prev ? { ...prev, attachments: (prev.attachments || []).filter(a => a.id !== id) } : null)} 
+                    />
                   </div>
                 </div>
               ) : (
@@ -636,10 +818,19 @@ export default function ProjectBoard() {
 
                     <TabsContent value="details" className="space-y-8 animate-in fade-in duration-300">
                       <div className="bg-muted/5 border rounded-xl p-6 shadow-inner">
-                        <h3 className="text-sm font-bold mb-4 flex items-center gap-2 text-primary uppercase tracking-tight">
-                          <FileText className="h-4 w-4" /> 
-                          Task Description
-                        </h3>
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-sm font-bold flex items-center gap-2 text-primary uppercase tracking-tight">
+                            <FileText className="h-4 w-4" /> 
+                            Task Description
+                          </h3>
+                          {selectedTask?.deadline && (
+                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border ${new Date(selectedTask.deadline) < new Date() ? 'bg-destructive/10 text-destructive border-destructive/20 animate-pulse' : 'bg-muted text-muted-foreground'}`}>
+                              <AlertCircle className="h-3 w-3" />
+                              Deadline: {new Date(selectedTask.deadline).toLocaleDateString()}
+                              {new Date(selectedTask.deadline) < new Date() && " (OVERDUE)"}
+                            </div>
+                          )}
+                        </div>
                         <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: selectedTask?.description || "<p className='italic text-muted-foreground'>No description provided.</p>" }} />
                       </div>
 
@@ -649,16 +840,36 @@ export default function ProjectBoard() {
                           Attachments
                         </h3>
                         {selectedTask?.attachments && selectedTask.attachments.length > 0 ? (
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {selectedTask.attachments.map(a => (
-                              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 p-4 bg-muted/20 rounded-xl hover:bg-muted/40 transition-all border hover:border-primary/30">
-                                <div className="bg-background p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform"><FileText className="h-6 w-6 text-primary" /></div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold truncate">{a.name}</p>
-                                  <p className="text-[10px] text-muted-foreground">{(a.size / 1024).toFixed(1)} KB</p>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {selectedTask.attachments.map(a => {
+                              const isImage = a.type.startsWith('image/');
+                              return (
+                                <div key={a.id} className="group relative flex flex-col bg-muted/20 rounded-xl overflow-hidden border hover:border-primary/30 transition-all">
+                                  {isImage ? (
+                                    <div className="aspect-video relative overflow-hidden bg-background flex items-center justify-center">
+                                      <img src={a.url} alt={a.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="bg-white text-black p-2 rounded-full shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                                          <PlusCircle className="h-5 w-5" />
+                                        </a>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="aspect-video bg-muted/50 flex flex-col items-center justify-center gap-2">
+                                      <FileText className="h-10 w-10 text-muted-foreground/50" />
+                                      <span className="text-[10px] font-mono text-muted-foreground uppercase">{a.name.split('.').pop()}</span>
+                                    </div>
+                                  )}
+                                  <div className="p-3 bg-background/50 backdrop-blur-sm mt-auto border-t">
+                                    <p className="text-[11px] font-bold truncate pr-6">{a.name}</p>
+                                    <div className="flex justify-between items-center mt-1">
+                                      <span className="text-[9px] text-muted-foreground">{(a.size / 1024).toFixed(1)} KB</span>
+                                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-[9px] font-bold">Download</a>
+                                    </div>
+                                  </div>
                                 </div>
-                              </a>
-                            ))}
+                              );
+                            })}
                           </div>
                         ) : <div className="bg-muted/10 rounded-xl p-8 text-center border-2 border-dashed border-muted-foreground/10 text-muted-foreground text-xs italic">No files attached.</div>}
                       </div>
@@ -674,9 +885,17 @@ export default function ProjectBoard() {
                               </div>
                               <div className="bg-muted/30 p-4 rounded-xl border">
                                 <p className="text-sm">
-                                  <span className="font-bold text-foreground">{h.user.name || h.user.email}</span> changed status 
-                                  from <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1">{h.oldStatus}</span> 
-                                  to <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1 font-bold text-primary">{h.newStatus}</span>
+                                  <span className="font-bold text-foreground">{h.user.name || h.user.email}</span>{" "}
+                                  {h.oldStatus === "Task edited" || h.oldStatus === "Edit" ? (
+                                    <>
+                                      edited the task: <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1 font-bold text-primary">{h.newStatus}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      changed status from <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1">{h.oldStatus || "Created"}</span>
+                                      to <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1 font-bold text-primary">{h.newStatus}</span>
+                                    </>
+                                  )}
                                 </p>
                                 <p className="text-[10px] text-muted-foreground mt-2">{new Date(h.createdAt).toLocaleString()}</p>
                               </div>
@@ -715,9 +934,14 @@ export default function ProjectBoard() {
                         {comment.attachments && comment.attachments.length > 0 && (
                           <div className="mt-3 space-y-2 border-t border-primary-foreground/10 pt-2">
                             {comment.attachments.map(a => (
-                              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 p-2 rounded-lg text-[10px] truncate ${isMe ? 'bg-white/10 hover:bg-white/20' : 'bg-muted/50 hover:bg-muted'}`}>
-                                <Paperclip className="h-3 w-3" />
-                                <span className="truncate">{a.name}</span>
+                              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className={`block overflow-hidden rounded-lg text-[10px] ${isMe ? 'bg-white/10 hover:bg-white/20' : 'bg-muted/50 hover:bg-muted'}`}>
+                                {a.type.startsWith("image/") && (
+                                  <img src={a.url} alt={a.name} className="max-h-44 w-full object-cover" />
+                                )}
+                                <span className="flex items-center gap-2 p-2">
+                                  <Paperclip className="h-3 w-3" />
+                                  <span className="truncate">{a.name}</span>
+                                </span>
                               </a>
                             ))}
                           </div>

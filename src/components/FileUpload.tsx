@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Button } from "./ui/button";
-import { Paperclip, X, FileText, ImageIcon, Loader2 } from "lucide-react";
+import { Paperclip, X, FileText, Loader2 } from "lucide-react";
 import { Attachment } from "@/generated/prisma";
 
 interface FileUploadProps {
@@ -85,13 +85,18 @@ export function AttachmentList({ attachments, onRemove }: { attachments: Attachm
       {attachments.map((file) => (
         <div key={file.id} className="flex items-center gap-2 p-2 bg-muted rounded-md border text-sm">
           {file.type.startsWith("image/") ? (
-            <ImageIcon className="h-4 w-4 text-blue-500" />
+            <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
+              <img src={file.url} alt={file.name} className="h-12 w-16 rounded border object-cover bg-background" />
+              <span className="hover:underline max-w-[150px] truncate font-medium">{file.name}</span>
+            </a>
           ) : (
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <a href={file.url} target="_blank" rel="noopener noreferrer" className="hover:underline max-w-[150px] truncate font-medium">
+                {file.name}
+              </a>
+            </>
           )}
-          <a href={file.url} target="_blank" rel="noopener noreferrer" className="hover:underline max-w-[150px] truncate font-medium">
-            {file.name}
-          </a>
           {onRemove && (
             <button onClick={() => onRemove(file.id)} className="text-muted-foreground hover:text-destructive transition-colors">
               <X className="h-3 w-3" />

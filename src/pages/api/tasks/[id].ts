@@ -12,11 +12,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { title, description, storyPoints, type, category, statusId, assigneeId, loggedTime } = req.body;
+      const { title, description, storyPoints, type, category, statusId, assigneeId, loggedTime, attachmentIds, deadline } = req.body;
 
       const existingTask = await prisma.task.findUnique({
         where: { id: taskId },
-        include: { status: true, assignee: true }
+        include: { status: true, assignee: true, attachments: true }
       });
 
       if (!existingTask) return res.status(404).json({ error: "Task not found" });
@@ -30,6 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (statusId) updateData.status = { connect: { id: statusId } };
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
       if (loggedTime !== undefined) updateData.loggedTime = Number(existingTask.loggedTime) + Number(loggedTime);
+      if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null;
+      if (attachmentIds !== undefined) {
+        updateData.attachments = {
+          set: attachmentIds.map((id: string) => ({ id }))
+        };
+      }
 
       const updatedTask = await prisma.task.update({
         where: { id: taskId },
@@ -70,6 +76,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
       }
 
+      const changedFields: string[] = [];
+      if (title !== undefined && title !== existingTask.title) changedFields.push("title");
+      if (description !== undefined && description !== existingTask.description) changedFields.push("description");
+      if (storyPoints !== undefined && Number(storyPoints) !== existingTask.storyPoints) changedFields.push("story points");
+      if (type !== undefined && type !== existingTask.type) changedFields.push("type");
+      if (category !== undefined && category !== existingTask.category) changedFields.push("category");
+      if (loggedTime !== undefined && Number(loggedTime) > 0) changedFields.push("logged time");
+      if (deadline !== undefined) {
+        const oldDeadline = existingTask.deadline ? existingTask.deadline.toISOString().split("T")[0] : "";
+        const newDeadline = deadline ? new Date(deadline).toISOString().split("T")[0] : "";
+        if (oldDeadline !== newDeadline) changedFields.push("deadline");
+      }
+      if (attachmentIds !== undefined) {
+        const oldIds = existingTask.attachments.map(a => a.id).sort().join(",");
+        const newIds = attachmentIds.map((id: string) => id).sort().join(",");
+        if (oldIds !== newIds) changedFields.push("attachments");
+      }
+
+      if (changedFields.length > 0) {
+        await prisma.taskHistory.create({
+          data: {
+            taskId: updatedTask.id,
+            userId: session.userId,
+            oldStatus: "Task edited",
+            newStatus: `Updated ${changedFields.join(", ")}`,
+          }
+        });
+      }
+
       return res.status(200).json(updatedTask);
     } catch (error) {
       console.error("PATCH task error:", error);
@@ -98,6 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!task) return res.status(404).json({ error: "Task not found" });
       return res.status(200).json(task);
     } catch (error) {
+        console.error("GET task error:", error);
         return res.status(500).json({ error: "Internal server error" });
     }
   }

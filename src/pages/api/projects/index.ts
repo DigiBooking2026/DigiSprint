@@ -13,6 +13,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         orderBy: { createdAt: "desc" },
         include: {
           _count: { select: { tasks: true } },
+          attachments: true,
+          statuses: true,
+          tasks: {
+            select: {
+              id: true,
+              deadline: true,
+              status: { select: { name: true } },
+              assignee: { select: { id: true, name: true, email: true } },
+            },
+          },
         }
       });
       return res.status(200).json(projects);
@@ -24,8 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { name, description, prefix, attachmentIds } = req.body;
+      const { name, description, prefix, attachmentIds, startDate, deadline } = req.body;
       if (!name || !prefix) return res.status(400).json({ error: "Name and Prefix are required" });
+      if (!startDate || !deadline) return res.status(400).json({ error: "Start date and deadline are required" });
 
       const defaultStatuses = [
         { name: 'Backlog', color: '#64748b', order: 1 },
@@ -44,6 +55,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           name, 
           description, 
           prefix,
+          startDate: startDate ? new Date(startDate) : null,
+          deadline: deadline ? new Date(deadline) : null,
           statuses: {
             create: defaultStatuses
           },
