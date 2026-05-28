@@ -75,7 +75,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'DELETE') {
     try {
-      if (session.role !== 'ADMIN') {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { role: true },
+      });
+
+      if (currentUser?.role !== 'ADMIN') {
         return res.status(403).json({ error: "Only admins can delete projects" });
       }
 
