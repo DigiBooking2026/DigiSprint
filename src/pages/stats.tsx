@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, BarChart3, Bug, CheckCircle2, Clock, Flame, Gauge, Timer, UserCheck } from "lucide-react";
+import { AlertTriangle, BarChart3, Bug, CheckCircle2, Clock, Flame, Gauge, Info, Timer, UserCheck } from "lucide-react";
 
 type DeveloperStat = {
   user: { id: string; name: string | null; email: string };
@@ -94,7 +94,9 @@ export default function StatsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Developer Stats</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Track hours, bugs, overdue work, status spread, and delivery signals by developer.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Compare developer delivery using task movement, logged hours, completed estimates, bugs, overdue work, and current status load.
+            </p>
           </div>
           <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-background p-3">
             <div className="space-y-1">
@@ -116,22 +118,49 @@ export default function StatsPage() {
           <div className="rounded-lg border bg-background p-12 text-center text-muted-foreground">Loading stats...</div>
         ) : (
           <>
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Info className="h-5 w-5 text-primary" />
+                  How to read these KPIs
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-4">
+                <div>
+                  <p className="font-semibold text-foreground">Score</p>
+                  <p>Higher is better. It rewards completion rate, completed estimate, and logged work, then subtracts pressure from overdue tasks and open bugs.</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Logged vs Estimated</p>
+                  <p>Logged is time recorded on tasks touched in the selected range. Estimated is story points or planned hours for those same touched tasks.</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Done %</p>
+                  <p>Share of tasks touched in the range that are currently in a done-like status. It helps spot throughput, not absolute effort alone.</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Delivery Risk</p>
+                  <p>A developer appears here when they own overdue open tasks or open bugs. It means work needs attention, not that the person is bad.</p>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Timer className="h-4 w-4 text-primary" /> Logged</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{fmtHours(stats.totals.loggedTime)}</div><p className="text-xs text-muted-foreground">recorded work</p></CardContent>
+                <CardContent><div className="text-2xl font-bold">{fmtHours(stats.totals.loggedTime)}</div><p className="text-xs text-muted-foreground">hours recorded on tasks touched in range</p></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-primary" /> Estimated</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{fmtHours(stats.totals.estimatedTime)}</div><p className="text-xs text-muted-foreground">updated in range</p></CardContent>
+                <CardContent><div className="text-2xl font-bold">{fmtHours(stats.totals.estimatedTime)}</div><p className="text-xs text-muted-foreground">planned hours for touched tasks</p></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Done</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{stats.totals.doneTasks}</div><p className="text-xs text-muted-foreground">completed updates</p></CardContent>
+                <CardContent><div className="text-2xl font-bold">{stats.totals.doneTasks}</div><p className="text-xs text-muted-foreground">touched tasks now done</p></CardContent>
               </Card>
               <Card className={stats.totals.overdueTasks > 0 ? "border-destructive/40" : ""}>
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><AlertTriangle className="h-4 w-4 text-destructive" /> Late</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{stats.totals.overdueTasks}</div><p className="text-xs text-muted-foreground">open overdue</p></CardContent>
+                <CardContent><div className="text-2xl font-bold">{stats.totals.overdueTasks}</div><p className="text-xs text-muted-foreground">open tasks past deadline</p></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Bug className="h-4 w-4 text-destructive" /> Bugs</CardTitle></CardHeader>
@@ -139,7 +168,7 @@ export default function StatsPage() {
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Gauge className="h-4 w-4 text-amber-500" /> Top Dev</CardTitle></CardHeader>
-                <CardContent><div className="truncate text-lg font-bold">{topDeveloper ? developerName(topDeveloper) : "None"}</div><p className="text-xs text-muted-foreground">score {topDeveloper?.score || 0}</p></CardContent>
+                <CardContent><div className="truncate text-lg font-bold">{topDeveloper ? developerName(topDeveloper) : "None"}</div><p className="text-xs text-muted-foreground">highest score in selected range</p></CardContent>
               </Card>
             </div>
 
@@ -147,21 +176,24 @@ export default function StatsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2"><UserCheck className="h-5 w-5 text-primary" /> Developer Performance</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Use this table to compare output and delivery pressure together. A strong developer usually has done work, reasonable logged time, few overdue tasks, and few open bugs.
+                  </p>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
                   <table className="w-full min-w-[980px] text-sm">
                     <thead>
                       <tr className="border-b text-left text-xs text-muted-foreground">
                         <th className="p-3">Developer</th>
-                        <th className="p-3 text-right">Score</th>
-                        <th className="p-3 text-right">Logged</th>
-                        <th className="p-3 text-right">Estimate</th>
-                        <th className="p-3 text-right">Done</th>
-                        <th className="p-3 text-right">Open</th>
-                        <th className="p-3 text-right">Late</th>
-                        <th className="p-3 text-right">Bugs</th>
-                        <th className="p-3 text-right">Done %</th>
-                        <th className="p-3">Status Spread</th>
+                        <th className="p-3 text-right" title="Composite indicator: completion rate + done estimate + logged time - overdue/open bug penalties.">Score</th>
+                        <th className="p-3 text-right" title="Hours logged on tasks touched in the selected range.">Logged</th>
+                        <th className="p-3 text-right" title="Estimated hours/story points on tasks touched in the selected range.">Estimate</th>
+                        <th className="p-3 text-right" title="Touched tasks that are currently done.">Done</th>
+                        <th className="p-3 text-right" title="Currently open tasks assigned to this developer.">Open</th>
+                        <th className="p-3 text-right" title="Open assigned tasks whose deadline has passed.">Late</th>
+                        <th className="p-3 text-right" title="Open bugs divided by all bugs assigned to this developer.">Bugs</th>
+                        <th className="p-3 text-right" title="Percent of touched tasks that are currently done.">Done %</th>
+                        <th className="p-3" title="Current assigned tasks grouped by workflow status.">Status Spread</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -201,7 +233,12 @@ export default function StatsPage() {
 
               <div className="space-y-6">
                 <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5 text-destructive" /> At Risk</CardTitle></CardHeader>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5 text-destructive" /> Delivery Risk</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      This highlights developers who currently own overdue tasks or open bugs. Use it to rebalance work, unblock people, or clarify priorities.
+                    </p>
+                  </CardHeader>
                   <CardContent className="space-y-3">
                     {atRiskDevelopers.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No developer has overdue work or open bugs.</p>
@@ -212,7 +249,7 @@ export default function StatsPage() {
                             <p className="truncate text-sm font-semibold">{developerName(dev)}</p>
                             <p className="text-xs text-muted-foreground">{dev.openTasks} open tasks</p>
                           </div>
-                          <span className="rounded-full bg-destructive/10 px-2 py-1 text-[10px] font-bold text-destructive">{dev.score}</span>
+                          <span className="rounded-full bg-destructive/10 px-2 py-1 text-[10px] font-bold text-destructive">score {dev.score}</span>
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs">
                           <div className="rounded bg-muted px-2 py-1"><span className="font-bold">{dev.overdueTasks}</span> late</div>
