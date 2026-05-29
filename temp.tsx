@@ -44,19 +44,7 @@ type ExtendedTask = Task & {
   parent?: { id: string, ticketId: string, title: string, status?: TaskStatus } | null,
   subtasks?: { id: string, ticketId: string, title: string, status?: TaskStatus }[],
   sourceLinks?: { target: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
-  targetLinks?: { source: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
-  sprint?: { id: string, name: string } | null
-};
-
-export type Sprint = {
-  id: string;
-  name: string;
-  goal: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  status: string;
-  projectId: string;
-  tasks: { id: string; storyPoints: number; status: { name: string } }[];
+  targetLinks?: { source: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[]
 };
 
 type ExtendedProject = Project & {
@@ -285,14 +273,12 @@ export default function ProjectBoard() {
   
   const [tasks, setTasks] = useState<ExtendedTask[]>([]);
   const [statuses, setStatuses] = useState<TaskStatus[]>([]);
-  const [sprints, setSprints] = useState<Sprint[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [project, setProject] = useState<ExtendedProject | null>(null);
   
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"kanban" | "list" | "sprints">("kanban");
-  const [activeSprintFilter, setActiveSprintFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dragStartStatus, setDragStartStatus] = useState<string | null>(null);
   const [lastOverStatus, setLastOverStatus] = useState<string | null>(null);
@@ -307,7 +293,6 @@ export default function ProjectBoard() {
   const [editPriority, setEditPriority] = useState("MEDIUM");
   const [editBlockedReason, setEditBlockedReason] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("");
-  const [editSprintId, setEditSprintId] = useState("");
   
   // Chat state
   const [commentText, setCommentText] = useState("");
@@ -342,10 +327,9 @@ export default function ProjectBoard() {
   const fetchData = useCallback(async () => {
     if (!projectId) return;
     try {
-      const [tasksRes, statusesRes, sprintsRes, usersRes, meRes, projectRes] = await Promise.all([
+      const [tasksRes, statusesRes, usersRes, meRes, projectRes] = await Promise.all([
         fetch(`/api/tasks?projectId=${projectId}`),
         fetch(`/api/statuses?projectId=${projectId}`),
-        fetch(`/api/projects/${projectId}/sprints`),
         fetch("/api/users"),
         fetch("/api/auth/me"),
         fetch(`/api/projects/${projectId}`)
@@ -353,7 +337,6 @@ export default function ProjectBoard() {
       
       if (tasksRes.ok) setTasks(await tasksRes.json());
       if (statusesRes.ok) setStatuses(await statusesRes.json());
-      if (sprintsRes.ok) setSprints(await sprintsRes.json());
       if (usersRes.ok) setUsers(await usersRes.json());
       if (meRes.ok) setCurrentUser(await meRes.json());
       if (projectRes.ok) setProject(await projectRes.json());
@@ -386,7 +369,6 @@ export default function ProjectBoard() {
       setEditPriority(data.priority || "MEDIUM");
       setEditBlockedReason(data.blockedReason || "");
       setEditOwnerId(data.ownerId || "");
-      setEditSprintId(data.sprintId || "");
     }
   };
 
@@ -408,7 +390,6 @@ export default function ProjectBoard() {
         priority: editPriority,
         blockedReason: editBlockedReason || null,
         ownerId: editOwnerId,
-        sprintId: editSprintId === "none" ? null : editSprintId || null,
         attachmentIds: selectedTask.attachments?.map(a => a.id) || []
       }),
     });
@@ -453,36 +434,12 @@ export default function ProjectBoard() {
   const [type, setType] = useState("TASK");
   const [category, setCategory] = useState("General");
   const [assigneeId, setAssigneeId] = useState("unassigned");
-  const [taskFormSprintId, setTaskFormSprintId] = useState<string | null>("none");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const categories = ["UI", "Backend", "Frontend", "DevOps", "Testing", "Documentation", "Database", "General"];
   
   const [openStatus, setOpenStatus] = useState(false);
   const [statusName, setStatusName] = useState("");
   const [statusColor, setStatusColor] = useState("#3b82f6");
-
-  const [openSprintForm, setOpenSprintForm] = useState(false);
-  const [sprintName, setSprintName] = useState("");
-  const [sprintGoal, setSprintGoal] = useState("");
-  const [sprintStartDate, setSprintStartDate] = useState("");
-  const [sprintEndDate, setSprintEndDate] = useState("");
-
-  const handleCreateSprint = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch(`/api/projects/${projectId}/sprints`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: sprintName, goal: sprintGoal, startDate: sprintStartDate || null, endDate: sprintEndDate || null }),
-    });
-    if (res.ok) {
-      setOpenSprintForm(false);
-      setSprintName("");
-      setSprintGoal("");
-      setSprintStartDate("");
-      setSprintEndDate("");
-      fetchData();
-    }
-  };
 
   const handleCreateStatus = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -516,7 +473,6 @@ export default function ProjectBoard() {
         deadline: deadline || null,
         assigneeId: assigneeId === "unassigned" ? null : assigneeId,
         parentId: taskFormParentId,
-        sprintId: taskFormSprintId === "none" ? null : taskFormSprintId,
         attachmentIds: attachments.map(a => a.id)
       }),
     });
@@ -529,7 +485,6 @@ export default function ProjectBoard() {
       setDeadline("");
       setPriority("MEDIUM");
       setBlockedReason("");
-      setTaskFormSprintId("none");
       setAttachments([]);
       fetchData();
       if (taskFormParentId && selectedTask?.id === taskFormParentId) {
@@ -721,23 +676,9 @@ export default function ProjectBoard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            {(viewMode === "kanban" || viewMode === "list") && sprints.length > 0 && (
-              <Select value={activeSprintFilter} onValueChange={setActiveSprintFilter}>
-                <SelectTrigger className="h-9 w-[180px]">
-                  <SelectValue placeholder="Filter by Sprint" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sprints</SelectItem>
-                  <SelectItem value="none">Backlog (No Sprint)</SelectItem>
-                  {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name} {s.status === 'ACTIVE' && '(Active)'}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-
             <div className="flex bg-muted p-1 rounded-lg">
               <Button variant={viewMode === "kanban" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("kanban")}>Kanban</Button>
               <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("list")}>List</Button>
-              <Button variant={viewMode === "sprints" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("sprints")}>Sprints</Button>
             </div>
 
             <Dialog open={openStatus} onOpenChange={setOpenStatus}>
@@ -774,31 +715,17 @@ export default function ProjectBoard() {
                     <div className="space-y-2"><Label>Priority</Label><Select value={priority} onValueChange={(val) => setPriority(val || "MEDIUM")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="LOW">Low</SelectItem><SelectItem value="MEDIUM">Medium</SelectItem><SelectItem value="HIGH">High</SelectItem><SelectItem value="CRITICAL">Critical</SelectItem></SelectContent></Select></div>
                     <div className="space-y-2"><Label>Deadline</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Parent Task</Label>
-                      <Select value={taskFormParentId || "none"} onValueChange={(val) => setTaskFormParentId(val === "none" ? null : val)}>
-                        <SelectTrigger><SelectValue placeholder="Select Parent Task" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {tasks.map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Sprint</Label>
-                      <Select value={taskFormSprintId || "none"} onValueChange={(val) => setTaskFormSprintId(val === "none" ? null : val)}>
-                        <SelectTrigger><SelectValue placeholder="Select Sprint" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Backlog</SelectItem>
-                          {sprints.map(s => (
-                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label>Parent Task</Label>
+                    <Select value={taskFormParentId || "none"} onValueChange={(val) => setTaskFormParentId(val === "none" ? null : val)}>
+                      <SelectTrigger><SelectValue placeholder="Select Parent Task" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {tasks.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {/blocked/i.test(statuses.find(s => s.id === statusId)?.name || "") && (
                     <div className="space-y-2">
@@ -906,113 +833,11 @@ export default function ProjectBoard() {
           <div className="flex-1 flex justify-center items-center">Loading board...</div>
         ) : statuses.length === 0 ? (
           <div className="flex-1 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground"><p>No statuses available.</p></div>
-        ) : viewMode === "sprints" ? (
-          <div className="flex-1 overflow-auto space-y-6">
-            <div className="flex justify-between items-center bg-card p-4 rounded-xl border">
-              <div>
-                <h3 className="font-bold">Sprints</h3>
-                <p className="text-xs text-muted-foreground mt-1">Plan and manage your active sprints</p>
-              </div>
-              <Dialog open={openSprintForm} onOpenChange={setOpenSprintForm}>
-                <DialogTrigger render={<Button variant="outline" className="gap-2"><PlusCircle className="h-4 w-4" /> Create Sprint</Button>} />
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader><DialogTitle>Create Sprint</DialogTitle></DialogHeader>
-                  <form onSubmit={handleCreateSprint} className="space-y-4">
-                    <div className="space-y-2"><Label>Name</Label><Input required value={sprintName} onChange={(e) => setSprintName(e.target.value)} placeholder="e.g. Sprint 1" /></div>
-                    <div className="space-y-2"><Label>Goal</Label><Input value={sprintGoal} onChange={(e) => setSprintGoal(e.target.value)} /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={sprintStartDate} onChange={(e) => setSprintStartDate(e.target.value)} /></div>
-                      <div className="space-y-2"><Label>End Date</Label><Input type="date" value={sprintEndDate} onChange={(e) => setSprintEndDate(e.target.value)} /></div>
-                    </div>
-                    <Button type="submit" className="w-full">Create Sprint</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-            
-            {sprints.map(sprint => {
-              const sprintTasks = tasks.filter(t => t.sprintId === sprint.id);
-              const sprintDone = sprintTasks.filter(task => isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name)).length;
-              return (
-                <div key={sprint.id} className="border rounded-xl bg-card overflow-hidden">
-                  <div className="bg-muted/30 p-4 border-b flex justify-between items-center">
-                    <div>
-                      <h3 className="font-bold flex items-center gap-2">
-                        {sprint.name} 
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${sprint.status === 'ACTIVE' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground'}`}>{sprint.status}</span>
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {sprint.startDate && new Date(sprint.startDate).toLocaleDateString()} - {sprint.endDate && new Date(sprint.endDate).toLocaleDateString()}
-                        {sprint.goal && ` • Goal: ${sprint.goal}`}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="text-right">
-                        <span className="font-bold">{sprintTasks.length}</span> issues
-                        <span className="mx-2 text-muted-foreground">|</span>
-                        <span className="font-bold">{sprintDone}</span> done
-                      </div>
-                      <Button variant="outline" size="sm" onClick={async () => {
-                        const newStatus = sprint.status === "PLANNED" ? "ACTIVE" : sprint.status === "ACTIVE" ? "COMPLETED" : "PLANNED";
-                        await fetch(`/api/sprints/${sprint.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
-                        fetchData();
-                      }}>
-                        {sprint.status === "PLANNED" ? "Start Sprint" : sprint.status === "ACTIVE" ? "Complete Sprint" : "Reopen Sprint"}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="p-2">
-                    {sprintTasks.length === 0 ? (
-                      <div className="text-center py-8 text-xs text-muted-foreground italic">No tasks in this sprint. Edit tasks to assign them here.</div>
-                    ) : (
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {sprintTasks.map(task => (
-                            <tr key={task.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => handleOpenTask(task)}>
-                              <td className="p-2 w-24 font-mono text-xs text-muted-foreground">{task.ticketId}</td>
-                              <td className="p-2 font-medium">{task.title}</td>
-                              <td className="p-2 w-32"><span className="text-[10px] font-bold uppercase" style={{ color: statuses.find(s => s.id === task.statusId)?.color || '#888' }}>{statuses.find(s => s.id === task.statusId)?.name}</span></td>
-                              <td className="p-2 w-16 text-center font-medium">{task.storyPoints}h</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            
-            <div className="border rounded-xl bg-card overflow-hidden">
-              <div className="bg-muted/30 p-4 border-b">
-                <h3 className="font-bold">Backlog</h3>
-                <p className="text-xs text-muted-foreground mt-1">Tasks not assigned to any sprint</p>
-              </div>
-              <div className="p-2">
-                {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).length === 0 ? (
-                  <div className="text-center py-8 text-xs text-muted-foreground italic">Backlog is empty.</div>
-                ) : (
-                  <table className="w-full text-sm">
-                    <tbody>
-                      {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).map(task => (
-                        <tr key={task.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => handleOpenTask(task)}>
-                          <td className="p-2 w-24 font-mono text-xs text-muted-foreground">{task.ticketId}</td>
-                          <td className="p-2 font-medium">{task.title}</td>
-                          <td className="p-2 w-32"><span className="text-[10px] font-bold uppercase" style={{ color: statuses.find(s => s.id === task.statusId)?.color || '#888' }}>{statuses.find(s => s.id === task.statusId)?.name}</span></td>
-                          <td className="p-2 w-16 text-center font-medium">{task.storyPoints}h</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          </div>
         ) : viewMode === "kanban" ? (
           <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={(e) => {setActiveId(String(e.active.id)); setDragStartStatus(tasks.find(t => t.id === String(e.active.id))?.statusId || null); setLastOverStatus(null)}} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
             <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
               {statuses.map(status => (
-                <DroppableStatusColumn key={status.id} status={status} columnTasks={tasks.filter(t => t.statusId === status.id && (activeSprintFilter === "all" || (activeSprintFilter === "none" && !t.sprintId) || t.sprintId === activeSprintFilter))} statuses={statuses} updateTaskStatus={updateTaskStatus} showConfirm={showConfirm} deleteTask={deleteTask} onOpenTask={handleOpenTask} />
+                <DroppableStatusColumn key={status.id} status={status} columnTasks={tasks.filter(t => t.statusId === status.id)} statuses={statuses} updateTaskStatus={updateTaskStatus} showConfirm={showConfirm} deleteTask={deleteTask} onOpenTask={handleOpenTask} />
               ))}
             </div>
             <DragOverlay>{activeTask ? <div className="w-[280px]"><Card className={`border-l-4 ${activeTask.type === 'BUG' ? 'border-l-destructive' : 'border-l-primary'} shadow-2xl`}><CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-medium">{activeTask.title}</CardTitle></CardHeader></Card></div> : null}</DragOverlay>
@@ -1022,7 +847,7 @@ export default function ProjectBoard() {
              <table className="w-full text-sm">
                 <thead><tr className="border-b bg-muted/50"><th className="text-left p-3">Ticket</th><th className="text-left p-3">Title</th><th className="text-left p-3">Type</th><th className="text-left p-3">Priority</th><th className="text-left p-3">Status</th><th className="text-left p-3">Assignee</th><th className="text-center p-3">Points</th><th className="text-right p-3">Actions</th></tr></thead>
                 <tbody>
-                  {tasks.filter(t => activeSprintFilter === "all" || (activeSprintFilter === "none" && !t.sprintId) || t.sprintId === activeSprintFilter).map(task => {
+                  {tasks.map(task => {
                     const currentStatus = statuses.find(s => s.id === task.statusId);
                     return (
                       <tr key={task.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleOpenTask(task)}>
@@ -1128,16 +953,6 @@ export default function ProjectBoard() {
                           {tasks.filter(t => t.id !== selectedTask?.id).map(t => (
                             <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
                           ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Sprint</Label>
-                      <Select value={editSprintId || "none"} onValueChange={(val) => setEditSprintId(val || "")}>
-                        <SelectTrigger><SelectValue placeholder="Select Sprint" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Backlog</SelectItem>
-                          {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

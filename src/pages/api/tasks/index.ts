@@ -16,6 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: true,
           assignee: { select: { id: true, name: true, email: true } },
           owner: { select: { id: true, name: true, email: true } },
+          sprint: { select: { id: true, name: true } },
           attachments: true,
           parent: { select: { id: true, ticketId: true, title: true } },
           subtasks: { select: { id: true, ticketId: true, title: true, status: true } },
@@ -33,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { title, description, storyPoints, deadline, statusId, projectId, assigneeId, attachmentIds, type, category, priority, blockedReason, parentId } = req.body;
+      const { title, description, storyPoints, deadline, statusId, projectId, sprintId, assigneeId, attachmentIds, type, category, priority, blockedReason, parentId } = req.body;
 
       const project = await prisma.project.findUnique({ where: { id: projectId } });
       if (!project) return res.status(404).json({ error: "Project not found" });
@@ -60,6 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           deadline: deadline ? new Date(deadline) : null,
           statusId,
           projectId,
+          sprintId: sprintId || null,
           assigneeId: assigneeId === "unassigned" ? null : assigneeId,
           parentId: parentId || null,
           ownerId: session.userId,

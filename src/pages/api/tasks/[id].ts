@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, loggedTime, attachmentIds, deadline, parentId } = req.body;
+      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, sprintId, loggedTime, attachmentIds, deadline, parentId } = req.body;
 
       const existingTask = await prisma.task.findUnique({
         where: { id: taskId },
@@ -48,6 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (statusId) updateData.status = { connect: { id: statusId } };
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
       if (ownerId !== undefined) updateData.owner = { connect: { id: ownerId } };
+      if (sprintId !== undefined) updateData.sprint = sprintId ? { connect: { id: sprintId } } : { disconnect: true };
       if (loggedTime !== undefined) updateData.loggedTime = Number(existingTask.loggedTime) + Number(loggedTime);
       if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null;
       if (attachmentIds !== undefined) {
@@ -70,6 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: true,
           assignee: { select: { id: true, name: true, email: true } },
           owner: { select: { id: true, name: true, email: true } },
+          sprint: { select: { id: true, name: true } },
           attachments: true,
           history: {
             include: { user: { select: { name: true, email: true } } },
@@ -164,6 +166,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: true,
           assignee: { select: { id: true, name: true, email: true } },
           owner: { select: { id: true, name: true, email: true } },
+          sprint: { select: { id: true, name: true } },
           attachments: true,
           parent: { select: { id: true, ticketId: true, title: true, status: true } },
           subtasks: { select: { id: true, ticketId: true, title: true, status: true } },

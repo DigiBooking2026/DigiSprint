@@ -41,8 +41,27 @@ model Project {
   attachments Attachment[]
   tasks       Task[]
   statuses    TaskStatus[]
+  sprints     Sprint[]
   
   @@map("project")
+}
+
+model Sprint {
+  id          String       @id @default(cuid())
+  name        String
+  goal        String?      @db.LongText
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String       @default("PLANNED") // PLANNED, ACTIVE, COMPLETED
+  projectId   String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@index([projectId])
+  @@map("sprint")
 }
 
 model Task {
@@ -59,6 +78,7 @@ model Task {
   deadline    DateTime?
   statusId    String
   projectId   String
+  sprintId    String?
   ownerId     String
   assigneeId  String?
   parentId    String?
@@ -69,6 +89,7 @@ model Task {
   assignee    User?         @relation("task_assignee", fields: [assigneeId], references: [id], map: "Task_assigneeId_fkey")
   owner       User          @relation("task_owner", fields: [ownerId], references: [id], map: "Task_ownerId_fkey")
   project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade, map: "Task_projectId_fkey")
+  sprint      Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   status      TaskStatus    @relation(fields: [statusId], references: [id], map: "Task_statusId_fkey")
   history     TaskHistory[]
   comments    Comment[]
@@ -81,6 +102,7 @@ model Task {
   @@index([assigneeId], map: "Task_assigneeId_fkey")
   @@index([ownerId], map: "Task_ownerId_fkey")
   @@index([projectId], map: "Task_projectId_fkey")
+  @@index([sprintId])
   @@index([statusId], map: "Task_statusId_fkey")
   @@index([parentId], map: "Task_parentId_fkey")
   @@map("task")
