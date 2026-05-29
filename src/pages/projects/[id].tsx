@@ -40,7 +40,11 @@ type ExtendedTask = Task & {
   status?: TaskStatus | null,
   attachments?: Attachment[],
   comments?: (Comment & { user: User, attachments: Attachment[] })[],
-  history?: (TaskHistory & { user: User })[]
+  history?: (TaskHistory & { user: User })[],
+  parent?: { id: string, ticketId: string, title: string, status?: TaskStatus } | null,
+  subtasks?: { id: string, ticketId: string, title: string, status?: TaskStatus }[],
+  sourceLinks?: { target: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
+  targetLinks?: { source: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[]
 };
 
 type ExtendedProject = Project & {
@@ -419,6 +423,7 @@ export default function ProjectBoard() {
 
   // Creation logic ... (Keep existing form logic)
   const [openTaskForm, setOpenTaskForm] = useState(false);
+  const [taskFormParentId, setTaskFormParentId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [storyPoints, setStoryPoints] = useState("");
@@ -467,11 +472,13 @@ export default function ProjectBoard() {
         blockedReason: blockedReason || null,
         deadline: deadline || null,
         assigneeId: assigneeId === "unassigned" ? null : assigneeId,
+        parentId: taskFormParentId,
         attachmentIds: attachments.map(a => a.id)
       }),
     });
     if (res.ok) {
       setOpenTaskForm(false);
+      setTaskFormParentId(null);
       setTitle("");
       setDescription("");
       setStoryPoints("");
@@ -480,6 +487,9 @@ export default function ProjectBoard() {
       setBlockedReason("");
       setAttachments([]);
       fetchData();
+      if (taskFormParentId && selectedTask?.id === taskFormParentId) {
+        fetchTaskDetails(taskFormParentId);
+      }
     }
   };
   
@@ -683,10 +693,13 @@ export default function ProjectBoard() {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={openTaskForm} onOpenChange={setOpenTaskForm}>
+            <Dialog open={openTaskForm} onOpenChange={(open) => {
+              if (!open) setTaskFormParentId(null);
+              setOpenTaskForm(open);
+            }}>
               <DialogTrigger render={<Button className="gap-2"><PlusCircle className="h-4 w-4" /> Create Task</Button>} />
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>Create Task {taskFormParentId ? "(Subtask)" : ""}</DialogTitle></DialogHeader>
                 <form onSubmit={handleCreateTask} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Type</Label><Select value={type} onValueChange={(val) => setType(val || "TASK")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="TASK">Task</SelectItem><SelectItem value="BUG">Bug</SelectItem></SelectContent></Select></div>
@@ -701,6 +714,18 @@ export default function ProjectBoard() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Priority</Label><Select value={priority} onValueChange={(val) => setPriority(val || "MEDIUM")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="LOW">Low</SelectItem><SelectItem value="MEDIUM">Medium</SelectItem><SelectItem value="HIGH">High</SelectItem><SelectItem value="CRITICAL">Critical</SelectItem></SelectContent></Select></div>
                     <div className="space-y-2"><Label>Deadline</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Parent Task</Label>
+                    <Select value={taskFormParentId || "none"} onValueChange={(val) => setTaskFormParentId(val === "none" ? null : val)}>
+                      <SelectTrigger><SelectValue placeholder="Select Parent Task" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {tasks.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {/blocked/i.test(statuses.find(s => s.id === statusId)?.name || "") && (
                     <div className="space-y-2">
@@ -907,6 +932,33 @@ export default function ProjectBoard() {
                   </div>
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Parent Task</Label>
+                      <Select 
+                        value={selectedTask?.parent?.id || "none"} 
+                        onValueChange={async (val) => {
+                          if (!selectedTask) return;
+                          const newParentId = val === "none" ? null : val;
+                          await fetch(`/api/tasks/${selectedTask.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ parentId: newParentId === null ? "" : newParentId })
+                          });
+                          fetchTaskDetails(selectedTask.id);
+                          fetchData();
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Select Parent Task" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {tasks.filter(t => t.id !== selectedTask?.id).map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Priority</Label>
                       <Select value={editPriority} onValueChange={(val) => setEditPriority(val || "MEDIUM")}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -960,6 +1012,120 @@ export default function ProjectBoard() {
                     </TabsList>
 
                     <TabsContent value="details" className="space-y-8 animate-in fade-in duration-300">
+                      
+                      {(selectedTask?.parent || (selectedTask?.subtasks && selectedTask.subtasks.length > 0) || (selectedTask?.sourceLinks && selectedTask.sourceLinks.length > 0) || (selectedTask?.targetLinks && selectedTask.targetLinks.length > 0)) && (
+                        <div className="bg-muted/5 border rounded-xl p-6 shadow-inner space-y-6">
+                          <div className="flex justify-between items-center">
+                            <h3 className="text-sm font-bold flex items-center gap-2 text-primary uppercase tracking-tight">
+                              <Code className="h-4 w-4" /> 
+                              Relations
+                            </h3>
+                            <div className="flex gap-2">
+                              <Select onValueChange={async (targetId) => {
+                                if (targetId === selectedTask.id) return;
+                                await fetch(`/api/tasks/${selectedTask.id}/links`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ targetId, type: "BLOCKS" })
+                                });
+                                fetchTaskDetails(selectedTask.id);
+                              }}>
+                                <SelectTrigger className="h-7 w-[120px] text-[10px]">
+                                  <PlusCircle className="h-3 w-3 mr-1" /> Link Task
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {tasks.filter(t => t.id !== selectedTask.id).map(t => (
+                                    <SelectItem key={t.id} value={t.id} className="text-[10px]">{t.ticketId} - {t.title}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => { setTaskFormParentId(selectedTask.id); setOpenTaskForm(true); }}>
+                                <PlusCircle className="h-3 w-3 mr-1" /> Add Subtask
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {selectedTask?.parent && (
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase font-bold mb-2">Parent Task</p>
+                              <div 
+                                className="flex items-center justify-between p-2 rounded-md border bg-background hover:border-primary cursor-pointer transition-colors"
+                                onClick={() => handleOpenTask(tasks.find(t => t.id === selectedTask.parent!.id) as ExtendedTask)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded">{selectedTask.parent.ticketId}</span>
+                                  <span className="text-xs font-medium">{selectedTask.parent.title}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedTask?.subtasks && selectedTask.subtasks.length > 0 && (
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase font-bold mb-2">Subtasks</p>
+                              <div className="space-y-2">
+                                {selectedTask.subtasks.map(sub => (
+                                  <div 
+                                    key={sub.id} 
+                                    className="flex items-center justify-between p-2 rounded-md border bg-background hover:border-primary transition-colors group"
+                                  >
+                                    <div className="flex items-center gap-2 cursor-pointer flex-1" onClick={() => handleOpenTask(tasks.find(t => t.id === sub.id) as ExtendedTask)}>
+                                      <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded">{sub.ticketId}</span>
+                                      <span className="text-xs font-medium">{sub.title}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-bold uppercase" style={{ color: sub.status?.color || '#888' }}>{sub.status?.name}</span>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await fetch(`/api/tasks/${sub.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId: "" }) });
+                                        fetchTaskDetails(selectedTask.id);
+                                        fetchData();
+                                      }}>
+                                        <X className="h-3 w-3 text-destructive" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {((selectedTask?.sourceLinks && selectedTask.sourceLinks.length > 0) || (selectedTask?.targetLinks && selectedTask.targetLinks.length > 0)) && (
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase font-bold mb-2">Links</p>
+                              <div className="space-y-2">
+                                {selectedTask?.sourceLinks?.map(link => (
+                                  <div key={`${link.type}-${link.target.id}`} className="flex items-center gap-2 text-xs border rounded p-2 bg-background group">
+                                    <span className="font-bold text-muted-foreground uppercase">{link.type}</span>
+                                    <span className="font-mono bg-muted px-1 py-0.5 rounded text-[10px] cursor-pointer hover:underline" onClick={() => handleOpenTask(tasks.find(t => t.id === link.target.id) as ExtendedTask)}>{link.target.ticketId}</span>
+                                    <span className="truncate flex-1">{link.target.title}</span>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100" onClick={async () => {
+                                      await fetch(`/api/tasks/${selectedTask.id}/links`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetId: link.target.id, type: link.type }) });
+                                      fetchTaskDetails(selectedTask.id);
+                                    }}>
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                {selectedTask?.targetLinks?.map(link => (
+                                  <div key={`${link.type}-${link.source.id}`} className="flex items-center gap-2 text-xs border rounded p-2 bg-background group">
+                                    <span className="font-bold text-muted-foreground uppercase">IS {link.type} BY</span>
+                                    <span className="font-mono bg-muted px-1 py-0.5 rounded text-[10px] cursor-pointer hover:underline" onClick={() => handleOpenTask(tasks.find(t => t.id === link.source.id) as ExtendedTask)}>{link.source.ticketId}</span>
+                                    <span className="truncate flex-1">{link.source.title}</span>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100" onClick={async () => {
+                                      await fetch(`/api/tasks/${link.source.id}/links`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetId: selectedTask.id, type: link.type }) });
+                                      fetchTaskDetails(selectedTask.id);
+                                    }}>
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="bg-muted/5 border rounded-xl p-6 shadow-inner">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-sm font-bold flex items-center gap-2 text-primary uppercase tracking-tight">

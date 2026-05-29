@@ -16,7 +16,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: true,
           assignee: { select: { id: true, name: true, email: true } },
           owner: { select: { id: true, name: true, email: true } },
-          attachments: true
+          attachments: true,
+          parent: { select: { id: true, ticketId: true, title: true } },
+          subtasks: { select: { id: true, ticketId: true, title: true, status: true } },
+          sourceLinks: { include: { target: { select: { id: true, ticketId: true, title: true, status: true } } } },
+          targetLinks: { include: { source: { select: { id: true, ticketId: true, title: true, status: true } } } }
         },
         orderBy: { createdAt: "desc" }
       });
@@ -29,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { title, description, storyPoints, deadline, statusId, projectId, assigneeId, attachmentIds, type, category, priority, blockedReason } = req.body;
+      const { title, description, storyPoints, deadline, statusId, projectId, assigneeId, attachmentIds, type, category, priority, blockedReason, parentId } = req.body;
 
       const project = await prisma.project.findUnique({ where: { id: projectId } });
       if (!project) return res.status(404).json({ error: "Project not found" });
@@ -57,6 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           statusId,
           projectId,
           assigneeId: assigneeId === "unassigned" ? null : assigneeId,
+          parentId: parentId || null,
           ownerId: session.userId,
           attachments: {
             connect: (attachmentIds || []).map((id: string) => ({ id }))

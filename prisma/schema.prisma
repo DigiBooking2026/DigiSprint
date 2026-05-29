@@ -61,6 +61,7 @@ model Task {
   projectId   String
   ownerId     String
   assigneeId  String?
+  parentId    String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   
@@ -71,12 +72,34 @@ model Task {
   status      TaskStatus    @relation(fields: [statusId], references: [id], map: "Task_statusId_fkey")
   history     TaskHistory[]
   comments    Comment[]
+  
+  parent      Task?         @relation("TaskToSubtasks", fields: [parentId], references: [id], onDelete: Cascade, map: "Task_parentId_fkey")
+  subtasks    Task[]        @relation("TaskToSubtasks")
+  sourceLinks TaskLink[]    @relation("TaskLinkSource")
+  targetLinks TaskLink[]    @relation("TaskLinkTarget")
 
   @@index([assigneeId], map: "Task_assigneeId_fkey")
   @@index([ownerId], map: "Task_ownerId_fkey")
   @@index([projectId], map: "Task_projectId_fkey")
   @@index([statusId], map: "Task_statusId_fkey")
+  @@index([parentId], map: "Task_parentId_fkey")
   @@map("task")
+}
+
+model TaskLink {
+  id        String   @id @default(cuid())
+  sourceId  String
+  targetId  String
+  type      String   // e.g., "BLOCKS", "IS_BLOCKED_BY", "RELATES_TO", "DUPLICATES"
+  createdAt DateTime @default(now())
+
+  source    Task     @relation("TaskLinkSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    Task     @relation("TaskLinkTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, targetId, type])
+  @@index([sourceId])
+  @@index([targetId])
+  @@map("tasklink")
 }
 
 model Comment {

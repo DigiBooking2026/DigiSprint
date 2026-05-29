@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, loggedTime, attachmentIds, deadline } = req.body;
+      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, loggedTime, attachmentIds, deadline, parentId } = req.body;
 
       const existingTask = await prisma.task.findUnique({
         where: { id: taskId },
@@ -54,6 +54,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updateData.attachments = {
           set: attachmentIds.map((id: string) => ({ id }))
         };
+      }
+      if (parentId !== undefined) {
+        if (parentId === null || parentId === "") {
+          updateData.parent = { disconnect: true };
+        } else {
+          updateData.parent = { connect: { id: parentId } };
+        }
       }
 
       const updatedTask = await prisma.task.update({
@@ -158,6 +165,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           assignee: { select: { id: true, name: true, email: true } },
           owner: { select: { id: true, name: true, email: true } },
           attachments: true,
+          parent: { select: { id: true, ticketId: true, title: true, status: true } },
+          subtasks: { select: { id: true, ticketId: true, title: true, status: true } },
+          sourceLinks: { include: { target: { select: { id: true, ticketId: true, title: true, status: true } } } },
+          targetLinks: { include: { source: { select: { id: true, ticketId: true, title: true, status: true } } } },
           comments: {
               include: { user: { select: { id: true, name: true, email: true } }, attachments: true },
               orderBy: { createdAt: 'asc' }
