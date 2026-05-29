@@ -48,12 +48,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       prisma.task.findMany({
         where: {
           project: { deletedAt: null },
-          OR: [
-            { updatedAt: { gte: from, lte: to } },
-            { createdAt: { gte: from, lte: to } },
-            { deadline: { gte: from, lte: to } },
-            { deadline: { lt: now } },
-          ],
         },
         include: {
           status: { select: { id: true, name: true, color: true } },
