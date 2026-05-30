@@ -805,7 +805,17 @@ export default function ProjectBoard() {
                   <div className="space-y-2"><Label>Description</Label><RichTextEditor content={description} onChange={setDescription} /></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Points</Label><Input type="number" step="0.5" required value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} /></div>
-                    <div className="space-y-2"><Label>Status</Label><Select required value={statusId} onValueChange={(val) => setStatusId(val || "")}><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select required value={statusId} onValueChange={(val) => setStatusId(val || "")}>
+                        <SelectTrigger>
+                          <span className="truncate">{statusId ? (statuses.find(s => s.id === statusId)?.name || statusId) : "Select status"}</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Priority</Label><Select value={priority} onValueChange={(val) => setPriority(val || "MEDIUM")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="LOW">Low</SelectItem><SelectItem value="MEDIUM">Medium</SelectItem><SelectItem value="HIGH">High</SelectItem><SelectItem value="CRITICAL">Critical</SelectItem></SelectContent></Select></div>
@@ -1144,6 +1154,28 @@ export default function ProjectBoard() {
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Deadline</Label>
                       <Input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Status</Label>
+                      <Select value={selectedTask?.statusId || ""} onValueChange={async (val) => {
+                        if (!selectedTask) return;
+                        await fetch(`/api/tasks/${selectedTask.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ statusId: val })
+                        });
+                        fetchTaskDetails(selectedTask.id);
+                        fetchData();
+                      }}>
+                        <SelectTrigger>
+                          <span className="truncate">{statuses.find(s => s.id === selectedTask?.statusId)?.name || "Status"}</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-6">
