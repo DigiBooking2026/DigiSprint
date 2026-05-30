@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, BarChart3, Bug, CheckCircle2, Clock, Flame, Gauge, Info, Timer, UserCheck } from "lucide-react";
 
 type DeveloperStat = {
@@ -33,6 +34,7 @@ type StatsResponse = {
   from: string;
   to: string;
   statuses: { name: string; color: string | null }[];
+  sprints: { id: string; name: string }[];
   totals: {
     tasks: number;
     updatedInPeriod: number;
@@ -65,12 +67,13 @@ function developerName(dev: DeveloperStat) {
 export default function StatsPage() {
   const [from, setFrom] = useState(dateInput(6));
   const [to, setTo] = useState(dateInput(0));
+  const [sprintId, setSprintId] = useState("all");
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ from, to });
+    const params = new URLSearchParams({ from, to, sprintId });
     const res = await fetch(`/api/stats?${params.toString()}`);
     if (res.ok) setStats(await res.json());
     setLoading(false);
@@ -79,7 +82,7 @@ export default function StatsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStats();
-  }, [fetchStats]);
+  }, [fetchStats, sprintId]);
 
   const topDeveloper = stats?.developers[0];
   const atRiskDevelopers = useMemo(
@@ -146,6 +149,19 @@ export default function StatsPage() {
             <div className="space-y-1">
               <Label htmlFor="to">To</Label>
               <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="sprint">Sprint</Label>
+              <Select value={sprintId} onValueChange={(val) => setSprintId(val || "all")}>
+                <SelectTrigger id="sprint" className="h-9 w-[160px]">
+                  <SelectValue placeholder="All Sprints" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sprints</SelectItem>
+                  <SelectItem value="none">Backlog (No Sprint)</SelectItem>
+                  {stats?.sprints?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={fetchStats} disabled={loading} className="gap-2">
               <BarChart3 className="h-4 w-4" />

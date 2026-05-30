@@ -34,8 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const from = typeof req.query.from === "string" ? startOfDay(req.query.from) : startOfDay(defaultFrom.toISOString());
     const to = typeof req.query.to === "string" ? endOfDay(req.query.to) : endOfDay(now.toISOString());
+    const sprintId = typeof req.query.sprintId === "string" && req.query.sprintId !== "all" ? req.query.sprintId : undefined;
 
-    const [users, statuses, tasks] = await Promise.all([
+    const [users, statuses, sprints, tasks] = await Promise.all([
       prisma.user.findMany({
         where: { role: "USER", isActive: true },
         select: { id: true, name: true, email: true },
@@ -45,9 +46,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         select: { id: true, name: true, color: true },
         orderBy: { order: "asc" },
       }),
+      prisma.sprint.findMany({
+        select: { id: true, name: true },
+        orderBy: { createdAt: "desc" },
+      }),
       prisma.task.findMany({
         where: {
           project: { deletedAt: null },
+          sprintId: sprintId === "none" ? null : sprintId,
         },
         include: {
           status: { select: { id: true, name: true, color: true } },
@@ -139,6 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       from: from.toISOString().split("T")[0],
       to: to.toISOString().split("T")[0],
       statuses: uniqueStatuses,
+      sprints,
       totals,
       developers: developerStats,
     });
