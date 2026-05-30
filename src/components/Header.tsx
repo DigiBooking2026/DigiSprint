@@ -4,13 +4,40 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, LogOut } from "lucide-react";
+import { Moon, Sun, LogOut, Bell } from "lucide-react";
 import { useTheme } from "next-themes";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import { useEffect, useState } from "react";
-import { User } from "@/generated/prisma";
+import { User, Notification } from "@/generated/prisma";
 
 export function Header() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetch('/api/notifications')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setNotifications(data);
+          setUnreadCount(data.filter(n => !n.isRead).length);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const markAllAsRead = async () => {
+    await fetch('/api/notifications', { method: 'PATCH' });
+    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+  };
+
+  const markAsRead = async (id: string) => {
+    await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
+    setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+  };
   const router = useRouter();
   const { setTheme, theme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
@@ -56,6 +83,48 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="focus:outline-none">
+              <Button variant="ghost" size="icon" className="relative pointer-events-none">
+                <Bell className="h-5 w-5 text-muted-foreground" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-2 h-2 w-2 rounded-full bg-destructive animate-pulse" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden shadow-2xl">
+              <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+                <h4 className="font-bold text-sm">Notifications</h4>
+                {unreadCount > 0 && (
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] uppercase" onClick={markAllAsRead}>Mark all read</Button>
+                )}
+              </div>
+              <div className="max-h-[350px] overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground italic">You're all caught up!</div>
+                ) : (
+                  notifications.map(n => (
+                    <div 
+                      key={n.id} 
+                      className={`p-3 border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors ${!n.isRead ? 'bg-primary/5' : ''}`}
+                      onClick={() => {
+                        if (!n.isRead) markAsRead(n.id);
+                        if (n.link) router.push(n.link);
+                      }}
+                    >
+                      <h5 className="font-semibold text-xs mb-1 flex items-center justify-between">
+                        {n.title}
+                        {!n.isRead && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                      </h5>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{n.message}</p>
+                      <span className="text-[9px] text-muted-foreground/60 mt-2 block">{new Date(n.createdAt).toLocaleString()}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="ghost"
             size="icon"

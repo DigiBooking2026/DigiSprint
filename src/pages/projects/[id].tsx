@@ -45,7 +45,8 @@ type ExtendedTask = Task & {
   subtasks?: { id: string, ticketId: string, title: string, status?: TaskStatus }[],
   sourceLinks?: { target: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
   targetLinks?: { source: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
-  sprint?: { id: string, name: string } | null
+  sprint?: { id: string, name: string } | null,
+  worklogs?: { id: string; hours: number; notes: string | null; date: string; user: { name: string | null; email: string } }[]
 };
 
 export type Sprint = {
@@ -314,6 +315,11 @@ export default function ProjectBoard() {
   const [chatAttachments, setChatAttachments] = useState<Attachment[]>([]);
   const [taskComments, setComments] = useState<(Comment & { user: User, attachments: Attachment[] })[]>([]);
   const [taskHistory, setTaskHistory] = useState<(TaskHistory & { user: User })[]>([]);
+  
+  // Worklog state
+  const [worklogHours, setWorklogHours] = useState("");
+  const [worklogNotes, setWorklogNotes] = useState("");
+  const [worklogDate, setWorklogDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Confirmation Modal
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -414,6 +420,37 @@ export default function ProjectBoard() {
     });
     if (res.ok) {
       setIsEditing(false);
+      fetchTaskDetails(selectedTask.id);
+      fetchData();
+    }
+  };
+
+  const handleAddWorklog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTask || !worklogHours) return;
+
+    const res = await fetch(`/api/tasks/${selectedTask.id}/worklogs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hours: parseFloat(worklogHours), notes: worklogNotes, date: worklogDate }),
+    });
+
+    if (res.ok) {
+      setWorklogHours("");
+      setWorklogNotes("");
+      fetchTaskDetails(selectedTask.id);
+      fetchData();
+    }
+  };
+
+  const handleDeleteWorklog = async (worklogId: string) => {
+    if (!selectedTask) return;
+    const res = await fetch(`/api/tasks/${selectedTask.id}/worklogs`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ worklogId }),
+    });
+    if (res.ok) {
       fetchTaskDetails(selectedTask.id);
       fetchData();
     }
@@ -722,7 +759,7 @@ export default function ProjectBoard() {
           </div>
           <div className="flex items-center gap-4">
             {(viewMode === "kanban" || viewMode === "list") && sprints.length > 0 && (
-              <Select value={activeSprintFilter} onValueChange={setActiveSprintFilter}>
+              <Select value={activeSprintFilter} onValueChange={(v) => setActiveSprintFilter(v || "all")}>
                 <SelectTrigger className="h-9 w-[180px]">
                   <SelectValue placeholder="Filter by Sprint" />
                 </SelectTrigger>
@@ -1193,6 +1230,7 @@ export default function ProjectBoard() {
                   <Tabs defaultValue="details" className="w-full">
                     <TabsList className="bg-muted/50 p-1 mb-6">
                       <TabsTrigger value="details" className="gap-2"><FileText className="h-4 w-4" /> Details</TabsTrigger>
+                      <TabsTrigger value="worklogs" className="gap-2"><Clock className="h-4 w-4" /> Time Tracking</TabsTrigger>
                       <TabsTrigger value="history" className="gap-2"><History className="h-4 w-4" /> History</TabsTrigger>
                     </TabsList>
 
@@ -1372,6 +1410,73 @@ export default function ProjectBoard() {
                             })}
                           </div>
                         ) : <div className="bg-muted/10 rounded-xl p-8 text-center border-2 border-dashed border-muted-foreground/10 text-muted-foreground text-xs italic">No files attached.</div>}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="worklogs" className="space-y-6 animate-in fade-in duration-300">
+                      <div className="bg-muted/5 border rounded-xl p-6 shadow-inner">
+                        <h3 className="text-sm font-bold flex items-center gap-2 text-primary uppercase tracking-tight mb-4">
+                          <Clock className="h-4 w-4" /> Log Work
+                        </h3>
+                        <form onSubmit={handleAddWorklog} className="flex flex-col gap-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold text-muted-foreground uppercase">Hours</Label>
+                              <Input type="number" step="0.1" required value={worklogHours} onChange={(e) => setWorklogHours(e.target.value)} placeholder="e.g. 2.5" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold text-muted-foreground uppercase">Date</Label>
+                              <Input type="date" required value={worklogDate} onChange={(e) => setWorklogDate(e.target.value)} />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                              <Label className="text-xs font-bold text-muted-foreground uppercase">Notes (Optional)</Label>
+                              <Input value={worklogNotes} onChange={(e) => setWorklogNotes(e.target.value)} placeholder="What did you work on?" />
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center mt-2">
+                            <div className="text-xs text-muted-foreground">
+                              Total Logged: <span className="font-bold text-foreground">{selectedTask?.loggedTime || 0}h</span> 
+                              {selectedTask?.storyPoints ? ` / ${selectedTask.storyPoints}h estimated` : ""}
+                            </div>
+                            <Button type="submit" size="sm" className="gap-2">Add Worklog</Button>
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-bold uppercase tracking-tight px-1">Recent Worklogs</h3>
+                        {selectedTask?.worklogs && selectedTask.worklogs.length > 0 ? (
+                          <div className="rounded-xl border overflow-hidden bg-card">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/30">
+                                <tr className="border-b text-xs text-muted-foreground uppercase">
+                                  <th className="text-left p-3 font-semibold">User</th>
+                                  <th className="text-left p-3 font-semibold">Date</th>
+                                  <th className="text-left p-3 font-semibold">Hours</th>
+                                  <th className="text-left p-3 font-semibold">Notes</th>
+                                  <th className="p-3 w-10"></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedTask.worklogs.map(log => (
+                                  <tr key={log.id} className="border-b last:border-0 hover:bg-muted/20">
+                                    <td className="p-3 font-medium">{log.user.name || log.user.email}</td>
+                                    <td className="p-3 text-muted-foreground">{new Date(log.date).toLocaleDateString()}</td>
+                                    <td className="p-3 font-mono font-bold text-primary">{log.hours}h</td>
+                                    <td className="p-3 text-muted-foreground text-xs">{log.notes || "-"}</td>
+                                    <td className="p-3 text-right">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => showConfirm("Delete Worklog?", "Are you sure you want to delete this worklog?", () => handleDeleteWorklog(log.id))}>
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground italic border border-dashed rounded-xl bg-muted/5">No time logged yet.</div>
+                        )}
                       </div>
                     </TabsContent>
 

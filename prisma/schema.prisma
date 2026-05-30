@@ -93,6 +93,7 @@ model Task {
   status      TaskStatus    @relation(fields: [statusId], references: [id], map: "Task_statusId_fkey")
   history     TaskHistory[]
   comments    Comment[]
+  worklogs    Worklog[]
   
   parent      Task?         @relation("TaskToSubtasks", fields: [parentId], references: [id], onDelete: Cascade, map: "Task_parentId_fkey")
   subtasks    Task[]        @relation("TaskToSubtasks")
@@ -185,6 +186,40 @@ model User {
   ownedTasks    Task[]        @relation("task_owner")
   histories     TaskHistory[]
   comments      Comment[]
+  worklogs      Worklog[]
+  notifications Notification[]
   
   @@map("user")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?  
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notification")
+}
+
+model Worklog {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  hours     Float
+  notes     String?  @db.LongText
+  date      DateTime @default(now()) // The date the work was performed
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([userId])
+  @@map("worklog")
 }

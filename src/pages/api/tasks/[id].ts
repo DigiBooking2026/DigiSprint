@@ -105,6 +105,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   newStatus: `${oldAssigneeName} -> ${newAssigneeName}`,
               }
           });
+
+          if (assigneeId && assigneeId !== session.userId) {
+            await prisma.notification.create({
+              data: {
+                userId: assigneeId,
+                title: "New Task Assigned",
+                message: `You have been assigned to ${updatedTask.ticketId}: ${updatedTask.title}`,
+                link: `/projects/${updatedTask.projectId}?task=${updatedTask.id}`
+              }
+            });
+          }
       }
 
       if (ownerId !== undefined && existingTask.ownerId !== ownerId) {
@@ -172,6 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           subtasks: { select: { id: true, ticketId: true, title: true, status: true } },
           sourceLinks: { include: { target: { select: { id: true, ticketId: true, title: true, status: true } } } },
           targetLinks: { include: { source: { select: { id: true, ticketId: true, title: true, status: true } } } },
+          worklogs: { include: { user: { select: { id: true, name: true, email: true } } }, orderBy: { date: 'desc' } },
           comments: {
               include: { user: { select: { id: true, name: true, email: true } }, attachments: true },
               orderBy: { createdAt: 'asc' }

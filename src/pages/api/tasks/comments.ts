@@ -47,6 +47,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       });
 
+      // Notify task assignee, owner, and mentioned users
+      const task = await prisma.task.findUnique({ where: { id: String(taskId) } });
+      if (task) {
+        const usersToNotify = new Set<string>();
+        if (task.assigneeId && task.assigneeId !== session.userId) usersToNotify.add(task.assigneeId);
+        if (task.ownerId && task.ownerId !== session.userId) usersToNotify.add(task.ownerId);
+
+        // Detect mentions like @user@example.com or @name
+        const mentionRegex = /@([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+|[a-zA-Z0-9]+)/g;
+        const mentions = Array.from(String(content || "").matchAll(mentionRegex)).map(m => m[1]);
+
+        if (mentions.length > 0) {
+          const mentionedUsers = await prisma.user.findMany({
+            where: {
+              OR: [
+                { email: { in: mentions } },
+                { name: { in: mentions } }
+              ]
+            },
+            select: { id: true }
+          });
+          for (const u of mentionedUsers) {
+            if (u.id !== session.userId) usersToNotify.add(u.id);
+          }
+        }
+
+        for (const uid of usersToNotify) {
+          await prisma.notification.create({
+            data: {
+              userId: uid,
+              title: "New Comment",
+              message: `${comment.user.name || comment.user.email} commented on ${task.ticketId}`,
+              link: `/projects/${task.projectId}?task=${task.id}`
+            }
+          });
+        }
+      }
+
       return res.status(200).json(comment);
     } catch (error) {
       console.error("POST comment error:", error);
