@@ -815,7 +815,9 @@ export default function ProjectBoard() {
                     <div className="space-y-2">
                       <Label>Parent Task</Label>
                       <Select value={taskFormParentId || "none"} onValueChange={(val) => setTaskFormParentId(val === "none" ? null : val)}>
-                        <SelectTrigger><SelectValue placeholder="Select Parent Task" /></SelectTrigger>
+                        <SelectTrigger>
+                          <span className="truncate">{taskFormParentId === "none" || !taskFormParentId ? "None" : (tasks.find(t => t.id === taskFormParentId)?.title || taskFormParentId)}</span>
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
                           {tasks.map(t => (
@@ -827,7 +829,9 @@ export default function ProjectBoard() {
                     <div className="space-y-2">
                       <Label>Sprint</Label>
                       <Select value={taskFormSprintId || "none"} onValueChange={(val) => setTaskFormSprintId(val === "none" ? null : val)}>
-                        <SelectTrigger><SelectValue placeholder="Select Sprint" /></SelectTrigger>
+                        <SelectTrigger>
+                          <span className="truncate">{taskFormSprintId === "none" || !taskFormSprintId ? "Backlog" : (sprints.find(s => s.id === taskFormSprintId)?.name || taskFormSprintId)}</span>
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Backlog</SelectItem>
                           {sprints.map(s => (
@@ -1159,7 +1163,9 @@ export default function ProjectBoard() {
                           fetchData();
                         }}
                       >
-                        <SelectTrigger><SelectValue placeholder="Select Parent Task" /></SelectTrigger>
+                        <SelectTrigger>
+                          <span className="truncate">{selectedTask?.parent ? selectedTask.parent.title : "None"}</span>
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
                           {tasks.filter(t => t.id !== selectedTask?.id).map(t => (
@@ -1170,8 +1176,10 @@ export default function ProjectBoard() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Sprint</Label>
-                      <Select value={editSprintId || "none"} onValueChange={(val) => setEditSprintId(val || "")}>
-                        <SelectTrigger><SelectValue placeholder="Select Sprint" /></SelectTrigger>
+                      <Select value={editSprintId || "none"} onValueChange={(val) => setEditSprintId(val === "none" ? "" : (val || ""))}>
+                        <SelectTrigger>
+                          <span className="truncate">{!editSprintId || editSprintId === "none" ? "Backlog" : (sprints.find(s => s.id === editSprintId)?.name || editSprintId)}</span>
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Backlog</SelectItem>
                           {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
