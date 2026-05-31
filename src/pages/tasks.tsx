@@ -69,7 +69,7 @@ export default function AllTasksPage() {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("me");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("in_progress");
   const [projectFilter, setProjectFilter] = useState<string>("all");
 
@@ -422,12 +422,17 @@ export default function AllTasksPage() {
                               <tr key={task.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleOpenTask(task)}>
                                 <td className="p-3 font-mono text-xs text-muted-foreground flex items-center gap-2">
                                   {task.ticketId}
-                                  {task.deadline && new Date(task.deadline) < new Date() && (
+                                  {task.deadline && new Date(task.deadline) < new Date() && !isDoneStatus(currentStatus?.name) && (
                                     <span title={`Overdue: ${new Date(task.deadline).toLocaleDateString()}`}>
                                       <AlertCircle className="h-3.5 w-3.5 text-destructive animate-pulse" />
                                     </span>
                                   )}
-                                  {task.deadline && isDueSoon(task.deadline) && (
+                                  {task.deadline && isDoneStatus(currentStatus?.name) && new Date(task.updatedAt) > new Date(task.deadline) && (
+                                    <span title={`Done Late (Deadline: ${new Date(task.deadline).toLocaleDateString()})`}>
+                                      <CheckCircle2 className="h-3.5 w-3.5 text-amber-500" />
+                                    </span>
+                                  )}
+                                  {task.deadline && isDueSoon(task.deadline) && !isDoneStatus(currentStatus?.name) && (
                                     <span title={`Due soon: ${new Date(task.deadline).toLocaleDateString()}`}>
                                       <Clock className="h-3.5 w-3.5 text-amber-500" />
                                     </span>
