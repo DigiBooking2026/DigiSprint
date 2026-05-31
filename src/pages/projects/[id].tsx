@@ -266,7 +266,10 @@ function DroppableStatusColumn({
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color || '#ccc' }} />
           <h3 className="font-semibold text-sm">{status.name}</h3>
         </div>
-        <span className="text-[10px] font-bold bg-background/80 px-2 py-0.5 rounded-full border shadow-sm">{columnTasks.length}</span>
+        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
+          <span className="bg-background/80 px-2 py-0.5 rounded-full border shadow-sm">{columnTasks.length} tasks</span>
+          <span className="bg-background/80 px-2 py-0.5 rounded-full border shadow-sm">{columnTasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0)}h</span>
+        </div>
       </div>
       <SortableContext 
         items={columnTasks.map(t => t.id)}
@@ -1017,6 +1020,8 @@ export default function ProjectBoard() {
                         <span className="font-bold">{sprintTasks.length}</span> issues
                         <span className="mx-2 text-muted-foreground">|</span>
                         <span className="font-bold">{sprintDone}</span> done
+                        <span className="mx-2 text-muted-foreground">|</span>
+                        <span className="font-bold">{sprintTasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0)}</span> hrs
                       </div>
                       <Button variant="outline" size="sm" onClick={async () => {
                         const newStatus = sprint.status === "PLANNED" ? "ACTIVE" : sprint.status === "ACTIVE" ? "COMPLETED" : "PLANNED";
@@ -1052,7 +1057,11 @@ export default function ProjectBoard() {
             <div className="border rounded-xl bg-card overflow-hidden">
               <div className="bg-muted/30 p-4 border-b">
                 <h3 className="font-bold">Backlog</h3>
-                <p className="text-xs text-muted-foreground mt-1">Tasks not assigned to any sprint</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).length} open tasks
+                  <span className="mx-2">•</span>
+                  {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).reduce((sum, t) => sum + (t.storyPoints || 0), 0)} hrs
+                </p>
               </div>
               <div className="p-2">
                 {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).length === 0 ? (

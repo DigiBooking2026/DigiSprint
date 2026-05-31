@@ -399,7 +399,9 @@ export default function AllTasksPage() {
                  <div key={projectId} className="border rounded-xl bg-card overflow-hidden">
                    <div className="bg-muted/50 p-4 border-b">
                      <h2 className="font-bold text-lg">{project?.name || "Unknown Project"}</h2>
-                     <p className="text-xs text-muted-foreground mt-1">{projTasks.length} tasks</p>
+                     <p className="text-xs text-muted-foreground mt-1">
+                       {projTasks.length} tasks • {projTasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0)} hrs
+                     </p>
                    </div>
                    <div className="overflow-x-auto">
                      <table className="w-full text-sm">
