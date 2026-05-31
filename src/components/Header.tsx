@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/compon
 
 import { useEffect, useState } from "react";
 import { User, Notification } from "@/generated/prisma";
+import { CommandMenu } from "./CommandMenu";
 
 export function Header() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -88,6 +89,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
+          <CommandMenu />
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none relative inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50">
               <Bell className="h-5 w-5 text-muted-foreground" />

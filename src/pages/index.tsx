@@ -67,6 +67,7 @@ function getProjectWorkState(project: ProjectWithWork) {
 export default function Dashboard() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectWithWork[]>([]);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -85,11 +86,13 @@ export default function Dashboard() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string, name: string } | null>(null);
 
-  const fetchProjects = async () => {
-    const res = await fetch("/api/projects");
-    if (res.ok) {
-      setProjects(await res.json());
-    }
+  const fetchData = async () => {
+    const [projRes, tasksRes] = await Promise.all([
+      fetch("/api/projects"),
+      fetch("/api/tasks")
+    ]);
+    if (projRes.ok) setProjects(await projRes.json());
+    if (tasksRes.ok) setAllTasks(await tasksRes.json());
     setLoading(false);
   };
 
@@ -108,7 +111,7 @@ export default function Dashboard() {
       .then(user => setCurrentUser(user));
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchProjects();
+    fetchData();
   }, []);
 
   const handleCreateProject = async (e: React.FormEvent) => {
@@ -128,7 +131,7 @@ export default function Dashboard() {
     if (res.ok) {
       setOpen(false);
       resetProjectForm();
-      fetchProjects();
+      fetchData();
     }
   };
 
@@ -166,7 +169,7 @@ export default function Dashboard() {
       setEditOpen(false);
       setProjectToEdit(null);
       resetProjectForm();
-      fetchProjects();
+      fetchData();
     } else {
       const err = await res.json();
       alert(err.error || "Failed to update project");
@@ -189,22 +192,102 @@ export default function Dashboard() {
     if (res.ok) {
       setConfirmOpen(false);
       setProjectToDelete(null);
-      fetchProjects();
+      fetchData();
     } else {
       const err = await res.json();
       alert(err.error || "Failed to delete project");
     }
   };
 
+  const myTasks = allTasks.filter(t => t.assigneeId === currentUser?.id && !isDoneStatus(t.status?.name));
+  const dueSoonMyTasks = myTasks.filter(t => isDueSoon(t.deadline) || isPastDate(t.deadline)).sort((a, b) => new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime());
+  
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-muted/20">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-            <p className="text-muted-foreground mt-1">Manage your teams and user stories.</p>
-          </div>
+      <main className="flex-1 container mx-auto px-4 py-8 space-y-8">
+        
+        {/* Personal Dashboard Section */}
+        {currentUser && (
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold tracking-tight">Welcome back, {currentUser.name || currentUser.email.split('@')[0]}!</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="md:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center justify-between">
+                    <span>My Active Tasks</span>
+                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs">{myTasks.length}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {myTasks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">You have no active tasks. Good job!</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {myTasks.slice(0, 5).map(task => (
+                        <div key={task.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-lg cursor-pointer border bg-background" onClick={() => router.push(`/projects/${task.projectId}?task=${task.id}`)}>
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground shrink-0">{task.ticketId}</span>
+                            <span className="text-sm font-medium truncate">{task.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {task.deadline && (isDueSoon(task.deadline) || isPastDate(task.deadline)) && (
+                              <AlertCircle className={`h-3 w-3 ${isPastDate(task.deadline) ? 'text-destructive animate-pulse' : 'text-amber-500'}`} />
+                            )}
+                            <span className="text-[10px] font-bold uppercase" style={{ color: task.status?.color || '#888' }}>{task.status?.name}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {myTasks.length > 5 && (
+                        <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => router.push('/tasks')}>View all my tasks ({myTasks.length})</Button>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" /> Action Needed
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center bg-destructive/10 p-3 rounded-lg border border-destructive/20">
+                      <div>
+                        <p className="text-sm font-bold text-destructive">{dueSoonMyTasks.filter(t => isPastDate(t.deadline)).length}</p>
+                        <p className="text-xs text-destructive/80">Overdue Tasks</p>
+                      </div>
+                      <AlertCircle className="h-6 w-6 text-destructive opacity-80" />
+                    </div>
+                    <div className="flex justify-between items-center bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+                      <div>
+                        <p className="text-sm font-bold text-amber-600">{dueSoonMyTasks.filter(t => !isPastDate(t.deadline)).length}</p>
+                        <p className="text-xs text-amber-600/80">Due Soon</p>
+                      </div>
+                      <Clock className="h-6 w-6 text-amber-600 opacity-80" />
+                    </div>
+                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border">
+                      <div>
+                        <p className="text-sm font-bold text-foreground">{myTasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0)}h</p>
+                        <p className="text-xs text-muted-foreground">Total Open Estimate</p>
+                      </div>
+                      <CircleDashed className="h-6 w-6 text-muted-foreground opacity-50" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        )}
+
+        <section>
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Projects</h2>
+              <p className="text-muted-foreground mt-1">Manage your teams and user stories.</p>
+            </div>
 
           <div className="flex items-center gap-3">
             <Dialog open={open} onOpenChange={(nextOpen) => {
@@ -370,6 +453,7 @@ export default function Dashboard() {
             })}
           </div>
         )}
+        </section>
       </main>
 
       <Dialog open={editOpen} onOpenChange={(nextOpen) => {
