@@ -69,6 +69,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithWork[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -87,12 +88,17 @@ export default function Dashboard() {
   const [projectToDelete, setProjectToDelete] = useState<{ id: string, name: string } | null>(null);
 
   const fetchData = async () => {
-    const [projRes, tasksRes] = await Promise.all([
+    const [projRes, tasksRes, activityRes] = await Promise.all([
       fetch("/api/projects"),
-      fetch("/api/tasks")
+      fetch("/api/tasks"),
+      fetch("/api/activity")
     ]);
     if (projRes.ok) setProjects(await projRes.json());
     if (tasksRes.ok) setAllTasks(await tasksRes.json());
+    if (activityRes.ok) {
+      const data = await activityRes.json();
+      setRecentActivity(data.slice(0, 5));
+    }
     setLoading(false);
   };
 
@@ -246,38 +252,63 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-amber-500" /> Action Needed
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center bg-destructive/10 p-3 rounded-lg border border-destructive/20">
-                      <div>
-                        <p className="text-sm font-bold text-destructive">{dueSoonMyTasks.filter(t => isPastDate(t.deadline)).length}</p>
-                        <p className="text-xs text-destructive/80">Overdue Tasks</p>
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500" /> Action Needed
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-destructive/10 p-3 rounded-lg border border-destructive/20">
+                        <div>
+                          <p className="text-sm font-bold text-destructive">{dueSoonMyTasks.filter(t => isPastDate(t.deadline)).length}</p>
+                          <p className="text-xs text-destructive/80">Overdue Tasks</p>
+                        </div>
+                        <AlertCircle className="h-6 w-6 text-destructive opacity-80" />
                       </div>
-                      <AlertCircle className="h-6 w-6 text-destructive opacity-80" />
-                    </div>
-                    <div className="flex justify-between items-center bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
-                      <div>
-                        <p className="text-sm font-bold text-amber-600">{dueSoonMyTasks.filter(t => !isPastDate(t.deadline)).length}</p>
-                        <p className="text-xs text-amber-600/80">Due Soon</p>
+                      <div className="flex justify-between items-center bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+                        <div>
+                          <p className="text-sm font-bold text-amber-600">{dueSoonMyTasks.filter(t => !isPastDate(t.deadline)).length}</p>
+                          <p className="text-xs text-amber-600/80">Due Soon</p>
+                        </div>
+                        <Clock className="h-6 w-6 text-amber-600 opacity-80" />
                       </div>
-                      <Clock className="h-6 w-6 text-amber-600 opacity-80" />
-                    </div>
-                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border">
-                      <div>
-                        <p className="text-sm font-bold text-foreground">{myTasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0)}h</p>
-                        <p className="text-xs text-muted-foreground">Total Open Estimate</p>
+                      <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{myTasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0)}h</p>
+                          <p className="text-xs text-muted-foreground">Total Open Estimate</p>
+                        </div>
+                        <CircleDashed className="h-6 w-6 text-muted-foreground opacity-50" />
                       </div>
-                      <CircleDashed className="h-6 w-6 text-muted-foreground opacity-50" />
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>Recent Activity</span>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => router.push('/activity')}>View All</Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {recentActivity.map(activity => (
+                        <div key={activity.id} className="text-sm flex flex-col gap-0.5 pb-2 border-b last:border-0 border-muted">
+                          <p className="text-foreground">
+                            <span className="font-semibold">{activity.user.name || activity.user.email}</span>
+                            {" "}<span className="text-muted-foreground">{activity.action}</span>{" "}
+                            <span className="font-mono text-[10px] bg-muted px-1 rounded cursor-pointer hover:underline" onClick={() => router.push(`/projects/${activity.task.projectId}?task=${activity.task.id}`)}>{activity.task.ticketId}</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{activity.details.replace(/<[^>]+>/g, '')}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </section>
         )}

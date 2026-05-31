@@ -820,6 +820,76 @@ export default function ProjectBoard() {
               <Button variant={viewMode === "sprints" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("sprints")}>Sprints</Button>
             </div>
 
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => {
+                const headers = ["Ticket ID", "Title", "Type", "Priority", "Status", "Story Points", "Assignee", "Deadline", "Created At"];
+                const rows = tasks.map(t => [
+                  t.ticketId,
+                  `"${t.title.replace(/"/g, '""')}"`,
+                  t.type,
+                  t.priority || "MEDIUM",
+                  statuses.find(s => s.id === t.statusId)?.name || "",
+                  t.storyPoints,
+                  users.find(u => u.id === t.assigneeId)?.email || "",
+                  t.deadline ? new Date(t.deadline).toLocaleDateString() : "",
+                  new Date(t.createdAt).toLocaleDateString()
+                ]);
+                const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `project-${project?.prefix}-tasks.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}>
+                Export CSV
+              </Button>
+
+              <Label className="cursor-pointer">
+                <Input type="file" accept=".csv" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !statuses.length) return;
+                  const text = await file.text();
+                  const lines = text.split("\n").filter(l => l.trim() !== "");
+                  if (lines.length <= 1) return; // Only headers or empty
+                  
+                  const defaultStatusId = statuses[0].id;
+                  let imported = 0;
+                  
+                  for (let i = 1; i < lines.length; i++) {
+                    const cols = lines[i].split(",").map(c => c.replace(/^"|"$/g, '').trim());
+                    if (cols.length < 2) continue; // Skip invalid rows
+                    // Assume CSV: Title, Description, Type, Priority, Story Points
+                    const [title, desc, type, priority, points] = cols;
+                    
+                    if (title) {
+                      await fetch("/api/tasks", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          title,
+                          description: desc || "",
+                          type: type || "TASK",
+                          priority: priority || "MEDIUM",
+                          storyPoints: parseFloat(points) || 0,
+                          statusId: defaultStatusId,
+                          projectId
+                        })
+                      });
+                      imported++;
+                    }
+                  }
+                  
+                  alert(`Imported ${imported} tasks successfully!`);
+                  e.target.value = '';
+                  fetchData();
+                }} />
+                <Button variant="outline" size="sm" className="pointer-events-none">Import CSV</Button>
+              </Label>
+            </div>
+
             <Dialog open={openStatus} onOpenChange={setOpenStatus}>
               <DialogTrigger render={<Button variant="outline" className="gap-2"><PlusCircle className="h-4 w-4" /> Add Status</Button>} />
               <DialogContent className="sm:max-w-md">
