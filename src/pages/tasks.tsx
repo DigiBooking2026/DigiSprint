@@ -73,6 +73,7 @@ export default function AllTasksPage() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("in_progress");
   const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("created_desc");
 
   // Task Details Modal
   const [selectedTask, setSelectedTask] = useState<ExtendedTask | null>(null);
@@ -320,8 +321,23 @@ export default function AllTasksPage() {
       }
 
       return true;
+    }).sort((a, b) => {
+      if (sortBy === "deadline_asc") {
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      }
+      if (sortBy === "priority_desc") {
+        const pOrder: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+        return (pOrder[b.priority || "MEDIUM"] || 0) - (pOrder[a.priority || "MEDIUM"] || 0);
+      }
+      if (sortBy === "points_desc") {
+        return (b.storyPoints || 0) - (a.storyPoints || 0);
+      }
+      // default: created_desc
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [tasks, assigneeFilter, projectFilter, statusFilter, currentUser, statuses]);
+  }, [tasks, assigneeFilter, projectFilter, statusFilter, currentUser, statuses, sortBy]);
 
   // Group by project
   const tasksByProject = useMemo(() => {
@@ -383,6 +399,20 @@ export default function AllTasksPage() {
                   <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="todo">To Do</SelectItem>
                   <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Sort By</Label>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v || "created_desc")}>
+                <SelectTrigger className="h-9 w-[160px]">
+                  <span className="truncate">{sortBy === "created_desc" ? "Newest First" : sortBy === "deadline_asc" ? "Deadline" : sortBy === "priority_desc" ? "Priority" : "Story Points"}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_desc">Newest First</SelectItem>
+                  <SelectItem value="deadline_asc">Deadline</SelectItem>
+                  <SelectItem value="priority_desc">Priority</SelectItem>
+                  <SelectItem value="points_desc">Story Points</SelectItem>
                 </SelectContent>
               </Select>
             </div>

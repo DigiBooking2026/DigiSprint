@@ -314,6 +314,7 @@ export default function ProjectBoard() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"kanban" | "list" | "sprints">("kanban");
   const [activeSprintFilter, setActiveSprintFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("created_desc");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dragStartStatus, setDragStartStatus] = useState<string | null>(null);
   const [lastOverStatus, setLastOverStatus] = useState<string | null>(null);
@@ -799,6 +800,20 @@ export default function ProjectBoard() {
               </Select>
             )}
 
+            {viewMode === "list" && (
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v || "created_desc")}>
+                <SelectTrigger className="h-9 w-[160px]">
+                  <span className="truncate">{sortBy === "created_desc" ? "Newest First" : sortBy === "deadline_asc" ? "Deadline" : sortBy === "priority_desc" ? "Priority" : "Story Points"}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_desc">Newest First</SelectItem>
+                  <SelectItem value="deadline_asc">Deadline</SelectItem>
+                  <SelectItem value="priority_desc">Priority</SelectItem>
+                  <SelectItem value="points_desc">Story Points</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
             <div className="flex bg-muted p-1 rounded-lg">
               <Button variant={viewMode === "kanban" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("kanban")}>Kanban</Button>
               <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("list")}>List</Button>
@@ -1139,7 +1154,21 @@ export default function ProjectBoard() {
              <table className="w-full text-sm">
                 <thead><tr className="border-b bg-muted/50"><th className="text-left p-3">Ticket</th><th className="text-left p-3">Title</th><th className="text-left p-3">Type</th><th className="text-left p-3">Priority</th><th className="text-left p-3">Status</th><th className="text-left p-3">Assignee</th><th className="text-center p-3">Points</th><th className="text-right p-3">Actions</th></tr></thead>
                 <tbody>
-                  {tasks.filter(t => activeSprintFilter === "all" || (activeSprintFilter === "none" && !t.sprintId) || t.sprintId === activeSprintFilter).map(task => {
+                  {tasks.filter(t => activeSprintFilter === "all" || (activeSprintFilter === "none" && !t.sprintId) || t.sprintId === activeSprintFilter).sort((a, b) => {
+                    if (sortBy === "deadline_asc") {
+                      if (!a.deadline) return 1;
+                      if (!b.deadline) return -1;
+                      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+                    }
+                    if (sortBy === "priority_desc") {
+                      const pOrder: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+                      return (pOrder[b.priority || "MEDIUM"] || 0) - (pOrder[a.priority || "MEDIUM"] || 0);
+                    }
+                    if (sortBy === "points_desc") {
+                      return (b.storyPoints || 0) - (a.storyPoints || 0);
+                    }
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                  }).map(task => {
                     const currentStatus = statuses.find(s => s.id === task.statusId);
                     return (
                       <tr key={task.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleOpenTask(task)}>
