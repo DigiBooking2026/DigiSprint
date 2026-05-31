@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
-import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project } from "@/generated/prisma";
+import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project, Tag } from "@/generated/prisma";
 import {
   DndContext,
   DragEndEvent,
@@ -46,7 +46,8 @@ type ExtendedTask = Task & {
   sourceLinks?: { target: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
   targetLinks?: { source: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
   sprint?: { id: string, name: string } | null,
-  worklogs?: { id: string; hours: number; notes: string | null; date: string; user: { name: string | null; email: string } }[]
+  worklogs?: { id: string; hours: number; notes: string | null; date: string; user: { name: string | null; email: string } }[],
+  tags?: Tag[]
 };
 
 export type Sprint = {
@@ -306,6 +307,7 @@ export default function ProjectBoard() {
   const [statuses, setStatuses] = useState<TaskStatus[]>([]);
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [project, setProject] = useState<ExtendedProject | null>(null);
   
@@ -327,6 +329,7 @@ export default function ProjectBoard() {
   const [editBlockedReason, setEditBlockedReason] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("");
   const [editSprintId, setEditSprintId] = useState("");
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
   
   // Chat state
   const [commentText, setCommentText] = useState("");
@@ -366,13 +369,14 @@ export default function ProjectBoard() {
   const fetchData = useCallback(async () => {
     if (!projectId) return;
     try {
-      const [tasksRes, statusesRes, sprintsRes, usersRes, meRes, projectRes] = await Promise.all([
+      const [tasksRes, statusesRes, sprintsRes, usersRes, meRes, projectRes, tagsRes] = await Promise.all([
         fetch(`/api/tasks?projectId=${projectId}`),
         fetch(`/api/statuses?projectId=${projectId}`),
         fetch(`/api/projects/${projectId}/sprints`),
         fetch("/api/users"),
         fetch("/api/auth/me"),
-        fetch(`/api/projects/${projectId}`)
+        fetch(`/api/projects/${projectId}`),
+        fetch("/api/tags")
       ]);
       
       if (tasksRes.ok) setTasks(await tasksRes.json());
@@ -381,6 +385,7 @@ export default function ProjectBoard() {
       if (usersRes.ok) setUsers(await usersRes.json());
       if (meRes.ok) setCurrentUser(await meRes.json());
       if (projectRes.ok) setProject(await projectRes.json());
+      if (tagsRes.ok) setTags(await tagsRes.json());
     } catch (error) {
       console.error("Fetch data error:", error);
     } finally {
@@ -411,6 +416,7 @@ export default function ProjectBoard() {
       setEditBlockedReason(data.blockedReason || "");
       setEditOwnerId(data.ownerId || "");
       setEditSprintId(data.sprintId || "");
+      setEditTagIds(data.tags?.map((t: Tag) => t.id) || []);
     }
   };
 
@@ -433,7 +439,8 @@ export default function ProjectBoard() {
         blockedReason: editBlockedReason || null,
         ownerId: editOwnerId,
         sprintId: editSprintId === "none" ? null : editSprintId || null,
-        attachmentIds: selectedTask.attachments?.map(a => a.id) || []
+        attachmentIds: selectedTask.attachments?.map(a => a.id) || [],
+        tagIds: editTagIds
       }),
     });
     if (res.ok) {
@@ -509,6 +516,7 @@ export default function ProjectBoard() {
   const [category, setCategory] = useState("General");
   const [assigneeId, setAssigneeId] = useState("unassigned");
   const [taskFormSprintId, setTaskFormSprintId] = useState<string | null>("none");
+  const [taskFormTagIds, setTaskFormTagIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const categories = ["UI", "Backend", "Frontend", "DevOps", "Testing", "Documentation", "Database", "General"];
   
@@ -572,7 +580,8 @@ export default function ProjectBoard() {
         assigneeId: assigneeId === "unassigned" ? null : assigneeId,
         parentId: taskFormParentId,
         sprintId: taskFormSprintId === "none" ? null : taskFormSprintId,
-        attachmentIds: attachments.map(a => a.id)
+        attachmentIds: attachments.map(a => a.id),
+        tagIds: taskFormTagIds
       }),
     });
     if (res.ok) {
@@ -585,6 +594,7 @@ export default function ProjectBoard() {
       setPriority("MEDIUM");
       setBlockedReason("");
       setTaskFormSprintId("none");
+      setTaskFormTagIds([]);
       setAttachments([]);
       fetchData();
       if (taskFormParentId && selectedTask?.id === taskFormParentId) {
@@ -875,7 +885,39 @@ export default function ProjectBoard() {
                       <Input required value={blockedReason} onChange={(e) => setBlockedReason(e.target.value)} placeholder="What is blocking this task?" />
                     </div>
                   )}
-                  <div className="space-y-2"><Label>Assign To</Label><Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || "unassigned")}><SelectTrigger><div className="flex min-w-0 items-center gap-1.5"><UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate">{selectedAssigneeLabel}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Assign To</Label><Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || "unassigned")}><SelectTrigger><div className="flex min-w-0 items-center gap-1.5"><UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate">{selectedAssigneeLabel}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}</SelectContent></Select></div>
+                    <div className="space-y-2">
+                      <Label>Tags</Label>
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {tags.filter(t => taskFormTagIds.includes(t.id)).map(t => (
+                          <span key={t.id} className="text-[10px] px-2 py-0.5 rounded-full border bg-muted font-semibold">{t.name}</span>
+                        ))}
+                      </div>
+                      <Select onValueChange={(val) => {
+                        const strVal = String(val);
+                        if (strVal === "new") {
+                          const name = window.prompt("New tag name:");
+                          if (name) fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }).then(res => res.json()).then(t => { setTags([...tags, t]); setTaskFormTagIds([...taskFormTagIds, t.id]); });
+                        } else if (val) {
+                          setTaskFormTagIds(prev => prev.includes(strVal) ? prev.filter(id => id !== strVal) : [...prev, strVal]);
+                        }
+                      }}>
+                        <SelectTrigger><span className="truncate">Select Tags...</span></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new" className="font-bold text-primary">+ Create New Tag</SelectItem>
+                          {tags.map(t => (
+                            <SelectItem key={t.id} value={t.id}>
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" checked={taskFormTagIds.includes(t.id)} readOnly className="pointer-events-none" />
+                                {t.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   <div className="space-y-2"><Label>Attachments</Label><FileUpload onUploadComplete={(a) => setAttachments([...attachments, a])} /><AttachmentList attachments={attachments} onRemove={(id) => setAttachments(attachments.filter(a => a.id !== id))} /></div>
                   <Button type="submit" className="w-full">Create Task</Button>
                 </form>
@@ -1160,6 +1202,11 @@ export default function ProjectBoard() {
                     <Clock className="h-3 w-3" />
                     Created: {selectedTask?.createdAt ? new Date(selectedTask.createdAt).toLocaleDateString() : "Unknown"}
                   </span>
+                  {selectedTask?.tags?.map(t => (
+                    <span key={t.id} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: t.color ? `${t.color}20` : undefined, borderColor: t.color ? `${t.color}40` : undefined, color: t.color || undefined }}>
+                      {t.name}
+                    </span>
+                  ))}
                 </div>
                 <div className="flex items-center gap-2">
                    {isEditing ? (
@@ -1276,6 +1323,34 @@ export default function ProjectBoard() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Tags</Label>
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {tags.filter(t => editTagIds.includes(t.id)).map(t => (
+                          <span key={t.id} className="text-[10px] px-2 py-0.5 rounded-full border bg-muted font-semibold flex items-center gap-1">
+                            {t.name}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setEditTagIds(prev => prev.filter(id => id !== t.id))} />
+                          </span>
+                        ))}
+                      </div>
+                      <Select onValueChange={(val) => {
+                        const strVal = String(val);
+                        if (strVal === "new") {
+                          const name = window.prompt("New tag name:");
+                          if (name) fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }).then(res => res.json()).then(t => { setTags([...tags, t]); setEditTagIds([...editTagIds, t.id]); });
+                        } else if (val && !editTagIds.includes(strVal)) {
+                          setEditTagIds([...editTagIds, strVal]);
+                        }
+                      }}>
+                        <SelectTrigger><span className="truncate">Add Tag...</span></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new" className="font-bold text-primary">+ Create New Tag</SelectItem>
+                          {tags.filter(t => !editTagIds.includes(t.id)).map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     {/blocked/i.test(selectedTask?.status?.name || "") && (
                       <div className="space-y-2">
                         <Label className="text-xs font-bold text-primary uppercase">Blocked Reason</Label>
@@ -1610,8 +1685,8 @@ export default function ProjectBoard() {
                         <span className="text-[10px] font-extrabold">{comment.user.name || comment.user.email}</span>
                         <span className="text-[9px] text-muted-foreground/60">{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <div className={`max-w-[95%] p-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm ${isMe ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-background border rounded-tl-none'}`}>
-                        {comment.content}
+                      <div className={`max-w-[95%] p-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm ${isMe ? 'bg-primary text-primary-foreground rounded-tr-none prose-invert' : 'bg-background border rounded-tl-none'}`}>
+                        <div className={`prose prose-sm max-w-none ${isMe ? '*:text-primary-foreground' : ''}`} dangerouslySetInnerHTML={{ __html: comment.content }} />
                         
                         {comment.attachments && comment.attachments.length > 0 && (
                           <div className="mt-3 space-y-2 border-t border-primary-foreground/10 pt-2">
@@ -1640,12 +1715,14 @@ export default function ProjectBoard() {
                     <AttachmentList attachments={chatAttachments} onRemove={(id) => setChatAttachments(chatAttachments.filter(a => a.id !== id))} />
                   </div>
                 )}
-                <form onSubmit={handlePostComment} className="flex gap-2">
-                  <FileUpload onUploadComplete={(a) => setChatAttachments([...chatAttachments, a])}>
-                    <Button type="button" variant="ghost" size="icon" className="shrink-0 h-10 w-10 text-muted-foreground hover:text-primary"><Paperclip className="h-5 w-5" /></Button>
-                  </FileUpload>
-                  <Input placeholder="Write a message..." value={commentText} onChange={(e) => setCommentText(e.target.value)} className="flex-1 text-xs h-10 bg-muted/20 border-none focus-visible:ring-1" />
-                  <Button type="submit" size="icon" className="h-10 w-10 shrink-0 shadow-md"><Send className="h-4 w-4" /></Button>
+                <form onSubmit={handlePostComment} className="flex flex-col gap-2">
+                  <RichTextEditor minHeight="min-h-[80px]" content={commentText} onChange={setCommentText} />
+                  <div className="flex items-center justify-between">
+                    <FileUpload onUploadComplete={(a) => setChatAttachments([...chatAttachments, a])}>
+                      <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-primary gap-2"><Paperclip className="h-4 w-4" /> Add file</Button>
+                    </FileUpload>
+                    <Button type="submit" size="sm" className="gap-2 shadow-md"><Send className="h-4 w-4" /> Send</Button>
+                  </div>
                 </form>
               </div>
             </div>

@@ -94,6 +94,7 @@ model Task {
   history     TaskHistory[]
   comments    Comment[]
   worklogs    Worklog[]
+  tags        Tag[]
   
   parent      Task?         @relation("TaskToSubtasks", fields: [parentId], references: [id], onDelete: Cascade, map: "Task_parentId_fkey")
   subtasks    Task[]        @relation("TaskToSubtasks")
@@ -171,6 +172,16 @@ model TaskStatus {
   @@unique([name, projectId], map: "TaskStatus_name_projectId_key")
   @@index([projectId], map: "TaskStatus_projectId_fkey")
   @@map("taskstatus")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String?
+  createdAt DateTime @default(now())
+  tasks     Task[]
+
+  @@map("tag")
 }
 
 model User {

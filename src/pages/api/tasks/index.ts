@@ -22,7 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           subtasks: { select: { id: true, ticketId: true, title: true, status: true } },
           sourceLinks: { include: { target: { select: { id: true, ticketId: true, title: true, status: true } } } },
           targetLinks: { include: { source: { select: { id: true, ticketId: true, title: true, status: true } } } },
-          project: { select: { id: true, name: true, prefix: true } }
+          project: { select: { id: true, name: true, prefix: true } },
+          tags: true
         },
         orderBy: { createdAt: "desc" }
       });
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { title, description, storyPoints, deadline, statusId, projectId, sprintId, assigneeId, attachmentIds, type, category, priority, blockedReason, parentId } = req.body;
+      const { title, description, storyPoints, deadline, statusId, projectId, sprintId, assigneeId, attachmentIds, type, category, priority, blockedReason, parentId, tagIds } = req.body;
 
       const project = await prisma.project.findUnique({ where: { id: projectId } });
       if (!project) return res.status(404).json({ error: "Project not found" });
@@ -68,12 +69,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ownerId: session.userId,
           attachments: {
             connect: (attachmentIds || []).map((id: string) => ({ id }))
+          },
+          tags: {
+            connect: (tagIds || []).map((id: string) => ({ id }))
           }
         },
         include: {
           status: true,
           assignee: true,
-          attachments: true
+          attachments: true,
+          tags: true
         }
       });
 

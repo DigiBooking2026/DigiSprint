@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
-import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project } from "@/generated/prisma";
+import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project, Tag } from "@/generated/prisma";
 
 type ExtendedTask = Task & { 
   assignee?: User | null, 
@@ -64,6 +64,7 @@ export default function AllTasksPage() {
   const [statuses, setStatuses] = useState<TaskStatus[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const [loading, setLoading] = useState(true);
@@ -83,6 +84,7 @@ export default function AllTasksPage() {
   const [editPriority, setEditPriority] = useState("MEDIUM");
   const [editBlockedReason, setEditBlockedReason] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("");
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
   
   // Chat state
   const [commentText, setCommentText] = useState("");
@@ -110,18 +112,20 @@ export default function AllTasksPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksRes, statusesRes, usersRes, meRes, projectsRes] = await Promise.all([
+      const [tasksRes, statusesRes, usersRes, meRes, projectsRes, tagsRes] = await Promise.all([
         fetch(`/api/tasks`),
         fetch(`/api/statuses`),
         fetch("/api/users"),
         fetch("/api/auth/me"),
-        fetch("/api/projects")
+        fetch("/api/projects"),
+        fetch("/api/tags")
       ]);
       
       if (tasksRes.ok) setTasks(await tasksRes.json());
       if (statusesRes.ok) setStatuses(await statusesRes.json());
       if (usersRes.ok) setUsers(await usersRes.json());
       if (projectsRes.ok) setProjects(await projectsRes.json());
+      if (tagsRes.ok) setTags(await tagsRes.json());
       if (meRes.ok) {
         const me = await meRes.json();
         setCurrentUser(me);
@@ -154,6 +158,7 @@ export default function AllTasksPage() {
       setEditPriority(data.priority || "MEDIUM");
       setEditBlockedReason(data.blockedReason || "");
       setEditOwnerId(data.ownerId || "");
+      setEditTagIds(data.tags?.map((t: Tag) => t.id) || []);
     }
   };
 
@@ -175,7 +180,8 @@ export default function AllTasksPage() {
         priority: editPriority,
         blockedReason: editBlockedReason || null,
         ownerId: editOwnerId,
-        attachmentIds: selectedTask.attachments?.map(a => a.id) || []
+        attachmentIds: selectedTask.attachments?.map(a => a.id) || [],
+        tagIds: editTagIds
       }),
     });
     if (res.ok) {
@@ -779,8 +785,8 @@ export default function AllTasksPage() {
                         <span className="text-[10px] font-extrabold">{comment.user.name || comment.user.email}</span>
                         <span className="text-[9px] text-muted-foreground/60">{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <div className={`max-w-[95%] p-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm ${isMe ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-background border rounded-tl-none'}`}>
-                        {comment.content}
+                      <div className={`max-w-[95%] p-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm ${isMe ? 'bg-primary text-primary-foreground rounded-tr-none prose-invert' : 'bg-background border rounded-tl-none'}`}>
+                        <div className={`prose prose-sm max-w-none ${isMe ? '*:text-primary-foreground' : ''}`} dangerouslySetInnerHTML={{ __html: comment.content }} />
                         
                         {comment.attachments && comment.attachments.length > 0 && (
                           <div className="mt-3 space-y-2 border-t border-primary-foreground/10 pt-2">
@@ -809,12 +815,14 @@ export default function AllTasksPage() {
                     <AttachmentList attachments={chatAttachments} onRemove={(id) => setChatAttachments(chatAttachments.filter(a => a.id !== id))} />
                   </div>
                 )}
-                <form onSubmit={handlePostComment} className="flex gap-2">
-                  <FileUpload onUploadComplete={(a) => setChatAttachments([...chatAttachments, a])}>
-                    <Button type="button" variant="ghost" size="icon" className="shrink-0 h-10 w-10 text-muted-foreground hover:text-primary"><Paperclip className="h-5 w-5" /></Button>
-                  </FileUpload>
-                  <Input placeholder="Write a message..." value={commentText} onChange={(e) => setCommentText(e.target.value)} className="flex-1 text-xs h-10 bg-muted/20 border-none focus-visible:ring-1" />
-                  <Button type="submit" size="icon" className="h-10 w-10 shrink-0 shadow-md"><Send className="h-4 w-4" /></Button>
+                <form onSubmit={handlePostComment} className="flex flex-col gap-2">
+                  <RichTextEditor minHeight="min-h-[80px]" content={commentText} onChange={setCommentText} />
+                  <div className="flex items-center justify-between">
+                    <FileUpload onUploadComplete={(a) => setChatAttachments([...chatAttachments, a])}>
+                      <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-primary gap-2"><Paperclip className="h-4 w-4" /> Add file</Button>
+                    </FileUpload>
+                    <Button type="submit" size="sm" className="gap-2 shadow-md"><Send className="h-4 w-4" /> Send</Button>
+                  </div>
                 </form>
               </div>
             </div>

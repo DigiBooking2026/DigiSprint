@@ -15,9 +15,10 @@ import { useEffect } from 'react'
 interface RichTextEditorProps {
   content: string
   onChange: (content: string) => void
+  minHeight?: string
 }
 
-export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, minHeight = "min-h-[150px]" }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -35,7 +36,7 @@ export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none min-h-[150px] p-3 focus:outline-none border rounded-md',
+        class: `prose prose-sm dark:prose-invert max-w-none ${minHeight} p-3 focus:outline-none border rounded-b-md border-t-0`,
       },
     },
   })
@@ -63,8 +64,8 @@ export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-1 p-1 bg-muted rounded-t-md border-x border-t">
+    <div className="flex flex-col focus-within:ring-1 focus-within:ring-ring rounded-md">
+      <div className="flex flex-wrap gap-1 p-1 bg-muted rounded-t-md border">
         <Button
           type="button"
           variant="ghost"

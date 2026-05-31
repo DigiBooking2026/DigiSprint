@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, sprintId, loggedTime, attachmentIds, deadline, parentId } = req.body;
+      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, sprintId, loggedTime, attachmentIds, tagIds, deadline, parentId } = req.body;
 
       const existingTask = await prisma.task.findUnique({
         where: { id: taskId },
@@ -56,6 +56,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           set: attachmentIds.map((id: string) => ({ id }))
         };
       }
+      if (tagIds !== undefined) {
+        updateData.tags = {
+          set: tagIds.map((id: string) => ({ id }))
+        };
+      }
       if (parentId !== undefined) {
         if (parentId === null || parentId === "") {
           updateData.parent = { disconnect: true };
@@ -73,6 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           owner: { select: { id: true, name: true, email: true } },
           sprint: { select: { id: true, name: true } },
           attachments: true,
+          tags: true,
           history: {
             include: { user: { select: { name: true, email: true } } },
             orderBy: { createdAt: 'desc' }
@@ -179,6 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           owner: { select: { id: true, name: true, email: true } },
           sprint: { select: { id: true, name: true } },
           attachments: true,
+          tags: true,
           parent: { select: { id: true, ticketId: true, title: true, status: true } },
           subtasks: { select: { id: true, ticketId: true, title: true, status: true } },
           sourceLinks: { include: { target: { select: { id: true, ticketId: true, title: true, status: true } } } },
