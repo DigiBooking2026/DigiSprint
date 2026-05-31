@@ -71,6 +71,9 @@ export function Header() {
             <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Projects
             </Link>
+            <Link href="/tasks" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              Tasks
+            </Link>
             {user?.role === 'ADMIN' && (
               <>
                 <Link href="/stats" className="text-sm font-medium text-muted-foreground hover:text-foreground">

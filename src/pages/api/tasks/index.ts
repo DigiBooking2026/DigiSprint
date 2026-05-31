@@ -21,7 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           parent: { select: { id: true, ticketId: true, title: true } },
           subtasks: { select: { id: true, ticketId: true, title: true, status: true } },
           sourceLinks: { include: { target: { select: { id: true, ticketId: true, title: true, status: true } } } },
-          targetLinks: { include: { source: { select: { id: true, ticketId: true, title: true, status: true } } } }
+          targetLinks: { include: { source: { select: { id: true, ticketId: true, title: true, status: true } } } },
+          project: { select: { id: true, name: true, prefix: true } }
         },
         orderBy: { createdAt: "desc" }
       });

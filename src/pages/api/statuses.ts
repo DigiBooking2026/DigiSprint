@@ -9,10 +9,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { projectId } = req.query;
 
   if (req.method === 'GET') {
-    if (!projectId) return res.status(400).json({ error: "projectId is required" });
     try {
       const statuses = await prisma.taskStatus.findMany({
-        where: { projectId: String(projectId) },
+        where: projectId ? { projectId: String(projectId) } : undefined,
         orderBy: { order: "asc" }
       });
       return res.status(200).json(statuses);
