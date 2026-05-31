@@ -183,9 +183,19 @@ function SortableTaskCard({
             dangerouslySetInnerHTML={{ __html: task.description || "" }}
           />
           
-          <div className="mb-3 flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
-            <UserIcon className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">Assigned to {assigneeName}</span>
+          <div className="mb-3 flex flex-col gap-1 rounded-md bg-muted/40 px-2 py-1.5 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <UserIcon className="h-3 w-3 shrink-0" />
+              <span className="truncate">Assigned to: <span className="font-semibold text-foreground">{assigneeName}</span></span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <UserIcon className="h-3 w-3 shrink-0" />
+              <span className="truncate">Created by: <span className="font-semibold text-foreground">{task.owner?.name || task.owner?.email || "Unknown"}</span></span>
+            </div>
+            <div className="flex items-center gap-1.5 text-muted-foreground/70">
+              <Clock className="h-3 w-3 shrink-0" />
+              <span>Created on: {new Date(task.createdAt).toLocaleDateString()}</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 mt-auto">
@@ -1126,6 +1136,10 @@ export default function ProjectBoard() {
                   <span className="inline-flex items-center gap-1 rounded-full border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     <UserIcon className="h-3 w-3" />
                     Owner: {selectedTask?.owner?.name || selectedTask?.owner?.email || "Unknown"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    Created: {selectedTask?.createdAt ? new Date(selectedTask.createdAt).toLocaleDateString() : "Unknown"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
