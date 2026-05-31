@@ -134,8 +134,8 @@ export default function AllTasksPage() {
   }, []);
 
   useEffect(() => {
-    if (router.isReady) fetchData();
-  }, [fetchData, router.isReady]);
+    fetchData();
+  }, [fetchData]);
 
   // Task Details Logic
   const fetchTaskDetails = async (taskId: string) => {
@@ -327,8 +327,6 @@ export default function AllTasksPage() {
     }
     return grouped;
   }, [filteredTasks]);
-
-  if (!router.isReady) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/20">
