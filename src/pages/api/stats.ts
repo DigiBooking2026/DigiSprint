@@ -25,6 +25,10 @@ function isNotStartedStatus(name?: string) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getSessionFromRequest(req);
   if (!session) return res.status(401).json({ error: "Unauthorized" });
+
+  const currentUser = await prisma.user.findUnique({ where: { id: session.userId } });
+  if (currentUser?.role !== 'ADMIN' || !currentUser.isActive) return res.status(403).json({ error: "Forbidden" });
+
   if (req.method !== 'GET') return res.status(405).end();
 
   try {

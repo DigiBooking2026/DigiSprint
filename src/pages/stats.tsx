@@ -71,18 +71,27 @@ export default function StatsPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [error, setError] = useState<string | null>(null);
+
   const fetchStats = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ from, to, sprintId });
     const res = await fetch(`/api/stats?${params.toString()}`);
-    if (res.ok) setStats(await res.json());
+    if (res.ok) {
+      setStats(await res.json());
+    } else if (res.status === 403 || res.status === 401) {
+      setError("You do not have permission to view this page. Admins only.");
+    } else {
+      setError("Failed to load stats.");
+    }
     setLoading(false);
-  }, [from, to]);
+  }, [from, to, sprintId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStats();
-  }, [fetchStats, sprintId]);
+  }, [fetchStats]);
 
   const topDeveloper = stats?.developers[0];
   const atRiskDevelopers = useMemo(
@@ -170,7 +179,11 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {loading || !stats ? (
+        {error ? (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-12 text-center text-destructive font-medium">
+            {error}
+          </div>
+        ) : loading || !stats ? (
           <div className="rounded-lg border bg-background p-12 text-center text-muted-foreground">Loading stats...</div>
         ) : (
           <>

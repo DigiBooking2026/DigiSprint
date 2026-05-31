@@ -71,26 +71,26 @@ export function Header() {
             <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Projects
             </Link>
-            <Link href="/stats" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Stats
-            </Link>
             {user?.role === 'ADMIN' && (
-              <Link href="/admin/users" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                Admin
-              </Link>
+              <>
+                <Link href="/stats" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                  Stats
+                </Link>
+                <Link href="/admin/users" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                  Users
+                </Link>
+              </>
             )}
           </nav>
         </div>
 
         <div className="flex items-center gap-4">
           <DropdownMenu>
-            <DropdownMenuTrigger className="focus:outline-none">
-              <Button variant="ghost" size="icon" className="relative pointer-events-none">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-2 h-2 w-2 rounded-full bg-destructive animate-pulse" />
-                )}
-              </Button>
+            <DropdownMenuTrigger className="focus:outline-none relative inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-2 h-2 w-2 rounded-full bg-destructive animate-pulse" />
+              )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden shadow-2xl">
               <div className="flex items-center justify-between p-3 border-b bg-muted/30">
