@@ -45,7 +45,7 @@ export default function ActivityStreamPage() {
   return (
     <div className="min-h-screen flex flex-col bg-muted/20">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Activity Stream</h1>
           <p className="text-muted-foreground mt-1">Global audit log of all project updates.</p>
@@ -87,7 +87,7 @@ export default function ActivityStreamPage() {
                             {activity.task.ticketId}
                           </Link>
                           {" "}
-                          <span className="font-medium text-foreground truncate max-w-[200px] inline-block align-bottom">{activity.task.title}</span>
+                          <span className="font-medium text-foreground">{activity.task.title}</span>
                         </p>
                         <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0 border bg-background px-2 py-0.5 rounded-full">
                           {new Date(activity.createdAt).toLocaleString()}
