@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:demo": "node prisma/seed-demo.cjs"
+    "seed:demo": "node prisma/seed-demo.cjs",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
