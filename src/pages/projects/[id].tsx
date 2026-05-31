@@ -776,7 +776,7 @@ export default function ProjectBoard() {
             {(viewMode === "kanban" || viewMode === "list") && sprints.length > 0 && (
               <Select value={activeSprintFilter} onValueChange={(v) => setActiveSprintFilter(v || "all")}>
                 <SelectTrigger className="h-9 w-[180px]">
-                  <SelectValue placeholder="Filter by Sprint" />
+                  <span className="truncate">{activeSprintFilter === "all" ? "All Sprints" : activeSprintFilter === "none" ? "Backlog (No Sprint)" : sprints.find(s => s.id === activeSprintFilter)?.name + (sprints.find(s => s.id === activeSprintFilter)?.status === 'ACTIVE' ? ' (Active)' : '')}</span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sprints</SelectItem>

@@ -346,7 +346,7 @@ export default function AllTasksPage() {
               <Label>Project</Label>
               <Select value={projectFilter} onValueChange={(v) => setProjectFilter(v || "all")}>
                 <SelectTrigger className="h-9 w-[180px]">
-                  <SelectValue placeholder="All Projects" />
+                  <span className="truncate">{projectFilter === "all" ? "All Projects" : projects.find(p => p.id === projectFilter)?.name}</span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Projects</SelectItem>
@@ -358,7 +358,7 @@ export default function AllTasksPage() {
               <Label>Assignee</Label>
               <Select value={assigneeFilter} onValueChange={(v) => setAssigneeFilter(v || "me")}>
                 <SelectTrigger className="h-9 w-[160px]">
-                  <SelectValue placeholder="Assigned to" />
+                  <span className="truncate">{assigneeFilter === "all" ? "Everyone" : assigneeFilter === "me" ? "Assigned to Me" : assigneeFilter === "unassigned" ? "Unassigned" : users.find(u => u.id === assigneeFilter)?.name || users.find(u => u.id === assigneeFilter)?.email}</span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Everyone</SelectItem>
@@ -372,7 +372,7 @@ export default function AllTasksPage() {
               <Label>Status</Label>
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v || "in_progress")}>
                 <SelectTrigger className="h-9 w-[160px]">
-                  <SelectValue placeholder="Status" />
+                  <span className="truncate">{statusFilter === "all" ? "All Statuses" : statusFilter === "in_progress" ? "In Progress" : statusFilter === "todo" ? "To Do" : "Done"}</span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
