@@ -6,7 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trash2, UserCog, AlertTriangle, Power, PowerOff } from "lucide-react";
+import { Trash2, UserCog, AlertTriangle, Power, PowerOff, Key } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { User } from "@/generated/prisma";
 
 type AdminUser = User & { isActive: boolean };
@@ -21,6 +23,14 @@ export default function AdminUsers() {
   const [userToDelete, setUserToDelete] = useState<{ id: string, email: string } | null>(null);
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
   const [userToUpdateStatus, setUserToUpdateStatus] = useState<{ id: string, email: string, isActive: boolean } | null>(null);
+
+  // Password Change Modal
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [userToChangePassword, setUserToChangePassword] = useState<{ id: string, email: string } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
   const fetchUsers = async () => {
     const res = await fetch("/api/admin/users");
@@ -100,6 +110,56 @@ export default function AdminUsers() {
     }
   };
 
+  const openPasswordModal = (user: AdminUser) => {
+    setUserToChangePassword({ id: user.id, email: user.email });
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError("");
+    setPasswordOpen(true);
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userToChangePassword) return;
+
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setPasswordSubmitting(true);
+    setPasswordError("");
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userToChangePassword.id, password: newPassword }),
+      });
+
+      if (res.ok) {
+        setPasswordOpen(false);
+        setUserToChangePassword(null);
+        setNewPassword("");
+        setConfirmPassword("");
+        alert("Password updated successfully.");
+      } else {
+        const data = await res.json();
+        setPasswordError(data.error || "Failed to update password.");
+      }
+    } catch (err) {
+      console.error(err);
+      setPasswordError("An unexpected error occurred.");
+    } finally {
+      setPasswordSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -150,6 +210,15 @@ export default function AdminUsers() {
                     </TableCell>
                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mr-2"
+                        onClick={() => openPasswordModal(user)}
+                      >
+                        <Key className="h-3.5 w-3.5 mr-1.5" />
+                        Password
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -220,6 +289,59 @@ export default function AdminUsers() {
               {userToUpdateStatus?.isActive ? "Confirm Deactivate" : "Confirm Activate"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" />
+              Change Password
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePasswordChange} className="space-y-4 py-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Change password for <span className="font-semibold text-foreground">{userToChangePassword?.email}</span>.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="At least 6 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="Repeat new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            {passwordError && (
+              <p className="text-sm font-medium text-destructive">{passwordError}</p>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="ghost" onClick={() => setPasswordOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={passwordSubmitting}>
+                {passwordSubmitting ? "Updating..." : "Update Password"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

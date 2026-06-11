@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
 import { getSessionFromRequest } from '@/lib/auth';
+import bcrypt from 'bcryptjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getSessionFromRequest(req);
@@ -24,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { userId, role, isActive } = req.body;
+      const { userId, role, isActive, password } = req.body;
       if (!userId) return res.status(400).json({ error: "userId is required" });
       if (role !== undefined && !["USER", "ADMIN"].includes(role)) {
         return res.status(400).json({ error: "Invalid role" });
@@ -35,15 +36,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (String(userId) === session.userId && isActive === false) {
         return res.status(400).json({ error: "You cannot deactivate your own account" });
       }
+      if (password !== undefined && (typeof password !== "string" || password.length < 6)) {
+        return res.status(400).json({ error: "Password must be at least 6 characters long" });
+      }
+
+      let hashedPassword;
+      if (password) {
+        hashedPassword = await bcrypt.hash(password, 10);
+      }
 
       const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
           ...(role !== undefined ? { role } : {}),
           ...(isActive !== undefined ? { isActive } : {}),
+          ...(hashedPassword !== undefined ? { password: hashedPassword } : {}),
         },
       });
-      return res.status(200).json(updatedUser);
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      return res.status(200).json(userWithoutPassword);
     } catch (error) {
       console.error("PATCH admin user error:", error);
       return res.status(500).json({ error: "Internal server error" });
