@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 31, 2026 at 12:47 AM
+-- Generation Time: Jun 16, 2026 at 06:39 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.4.18
 
@@ -46,8 +46,7 @@ CREATE TABLE `attachment` (
 INSERT INTO `attachment` (`id`, `name`, `url`, `size`, `type`, `createdAt`, `projectId`, `taskId`, `commentId`) VALUES
 ('cmpob04pm0001jn3kfew7vhut', 'Capture d’écran 2026-05-12 140553.png', '/uploads/ls6cfkb010jmwkj75szifd1px.png', 53633, 'image/png', '2026-05-27 16:53:58.618', NULL, NULL, 'cmpob07mq0003jn3kay407ezy'),
 ('cmppalpst0003jndsyexra0vk', 'Capture d’écran 2026-05-12 140553.png', '/uploads/to6r2rhs3yabdvuj44mjkcdsy.png', 53633, 'image/png', '2026-05-28 09:30:32.286', NULL, NULL, 'cmppalrnl0005jndsl59r2f9b'),
-('cmppc0r2h000bjnds704dmpbx', 'b583a9b2-1814-43ff-9e07-4c013e77d3c6.png', '/uploads/skybqsdwifla6yktrey0z280n.png', 1775420, 'image/png', '2026-05-28 10:10:13.385', NULL, 'cmpnqut8q0015jn1s4ns18ouu', NULL),
-('cmprg7m030001jnt4zawf7isc', 'Capture d’écran 2026-05-12 140553.png', '/uploads/qrkaysamrgjd3hcfy5ok1aryj.png', 53633, 'image/png', '2026-05-29 21:43:04.227', NULL, 'cmprg7nm30003jnt4v9oqfvmq', NULL);
+('cmppc0r2h000bjnds704dmpbx', 'b583a9b2-1814-43ff-9e07-4c013e77d3c6.png', '/uploads/skybqsdwifla6yktrey0z280n.png', 1775420, 'image/png', '2026-05-28 10:10:13.385', NULL, 'cmpnqut8q0015jn1s4ns18ouu', NULL);
 
 -- --------------------------------------------------------
 
@@ -114,11 +113,11 @@ CREATE TABLE `project` (
 
 INSERT INTO `project` (`id`, `name`, `description`, `prefix`, `createdAt`, `updatedAt`, `deletedAt`, `deadline`, `startDate`) VALUES
 ('cmpnqut7t0001jn1sua3ia6g8', 'DigiBooking Mobile App', '<h1>DigiBooking Mobile 2.0</h1><p>The next generation of our mobile booking platform. This version focuses on speed, accessibility, and a brand new UI using the corporate palette.</p>', 'MOB', '2026-05-27 07:29:58.122', '2026-05-28 19:45:15.508', '2026-05-28 19:45:15.507', NULL, NULL),
-('cmppw0ntn0004jnwohk75ksl1', 'Demo - In Progress', '<p>Demo project currently in progress, with active work and review tasks.</p>', 'DEMO-WEB', '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', NULL, '2026-06-15 08:00:00.000', '2026-05-16 08:00:00.000'),
-('cmppw0nua000ujnwoff0sv3b5', 'Demo - Past Deadline', '<p>Demo project past its deadline with overdue backend and testing tasks.</p>', 'DEMO-API', '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', NULL, '2026-05-26 08:00:00.000', '2026-05-03 08:00:00.000'),
-('cmppw0nut001kjnwo6zfocl8d', 'Demo - Not Started', '<p>Demo project that has not started yet, with upcoming work in backlog and to do.</p>', 'DEMO-MOB', '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', NULL, '2026-06-25 08:00:00.000', '2026-05-31 08:00:00.000'),
-('cmppw0nv60026jnwoxgu4w9dc', 'Demo - Done', '<p>Demo project where all tasks are complete, so the project is done.</p>', 'DEMO-QA', '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', NULL, '2026-05-25 08:00:00.000', '2026-05-08 08:00:00.000'),
-('cmppwcatq0008jnyczas71a8l', 'Delete Smoke Test', '<p>Temporary delete smoke test.</p>', 'DEL44498', '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.612', '2026-05-28 19:39:04.611', '2026-06-01 00:00:00.000', '2026-05-28 00:00:00.000');
+('cmppwcatq0008jnyczas71a8l', 'Delete Smoke Test', '<p>Temporary delete smoke test.</p>', 'DEL44498', '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.612', '2026-05-28 19:39:04.611', '2026-06-01 00:00:00.000', '2026-05-28 00:00:00.000'),
+('cmq9920mq0004jnaw0gpfmgrm', 'Demo - In Progress', '<p>Demo project currently in progress, with active work and review tasks.</p>', 'DEMO-WEB', '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', NULL, '2026-06-29 08:00:00.000', '2026-05-30 08:00:00.000'),
+('cmq9920ng000ujnawk8l1r0j0', 'Demo - Past Deadline', '<p>Demo project past its deadline with overdue backend and testing tasks.</p>', 'DEMO-API', '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', NULL, '2026-06-09 08:00:00.000', '2026-05-17 08:00:00.000'),
+('cmq9920o5001kjnaw2x2d9l66', 'Demo - Not Started', '<p>Demo project that has not started yet, with upcoming work in backlog and to do.</p>', 'DEMO-MOB', '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', NULL, '2026-07-09 08:00:00.000', '2026-06-14 08:00:00.000'),
+('cmq9920op0026jnawszt50g2w', 'Demo - Done', '<p>Demo project where all tasks are complete, so the project is done.</p>', 'DEMO-QA', '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', NULL, '2026-06-08 08:00:00.000', '2026-05-22 08:00:00.000');
 
 -- --------------------------------------------------------
 
@@ -138,12 +137,18 @@ CREATE TABLE `sprint` (
   `updatedAt` datetime(3) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `sprint`
+-- Table structure for table `tag`
 --
 
-INSERT INTO `sprint` (`id`, `name`, `goal`, `startDate`, `endDate`, `status`, `projectId`, `createdAt`, `updatedAt`) VALUES
-('cmps1wqc20001jnhwfpdr9nb6', 'Sprint1', NULL, '2026-05-30 00:00:00.000', '2026-06-08 00:00:00.000', 'PLANNED', 'cmppw0nua000ujnwoff0sv3b5', '2026-05-30 07:50:28.176', '2026-05-30 08:17:05.445');
+CREATE TABLE `tag` (
+  `id` varchar(191) NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `color` varchar(191) DEFAULT NULL,
+  `createdAt` datetime(3) NOT NULL DEFAULT current_timestamp(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -191,23 +196,21 @@ INSERT INTO `task` (`id`, `ticketId`, `title`, `description`, `type`, `category`
 ('cmpnqut8o0013jn1sjxdom80q', 'MOB-11', 'Missing translation for \"Cancel Booking\"', '<p>Label shows \"CANCEL_BTN\" instead of the localized text.</p>', 'BUG', 'Frontend', 1, 0, NULL, 'cmpnqut7z0005jn1s64dfouhb', 'cmpnqut7t0001jn1sua3ia6g8', 'cmpnqut7o0000jn1sb3cup9w3', 'cmpnqut7o0000jn1sb3cup9w3', '2026-05-27 07:29:58.153', '2026-05-27 15:05:23.890', NULL, 'MEDIUM', NULL, NULL),
 ('cmpnqut8q0015jn1s4ns18ouu', 'MOB-12', 'Add support for dark mode globally', '<p>Ensure all components use HSL variables.</p>', 'TASK', 'UI', 8, 0, NULL, 'cmpnqut7z0005jn1s64dfouhb', 'cmpnqut7t0001jn1sua3ia6g8', 'cmpnqut7o0000jn1sb3cup9w3', 'cmpnqut7o0000jn1sb3cup9w3', '2026-05-27 07:29:58.154', '2026-05-28 10:10:16.089', NULL, 'MEDIUM', NULL, NULL),
 ('cmpnqut8s0017jn1s94gqr2qn', 'MOB-13', 'Database migration for user profiles 1', '<p>Added \"preferred_currency\" field.1</p>', 'TASK', 'Database', 5, 0, NULL, 'cmpnqut7z000ajn1shu0s1k0f', 'cmpnqut7t0001jn1sua3ia6g8', 'cmpnqut7o0000jn1sb3cup9w3', 'cmpnqut7o0000jn1sb3cup9w3', '2026-05-27 07:29:58.156', '2026-05-27 16:54:06.989', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0ntr000fjnwouslz44fg', 'DEMO-WEB-1', 'Create landing page wireframe', '<p>Create landing page wireframe for Demo - In Progress.</p>', 'TASK', 'General', 4, 4, '2026-05-23 08:00:00.000', 'cmppw0ntn000bjnwoje0y4gak', 'cmppw0ntn0004jnwohk75ksl1', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-05-28 19:30:01.503', '2026-05-28 19:30:01.503', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0ntv000jjnwo6r76p1vu', 'DEMO-WEB-2', 'Build responsive pricing section', '<p>Build responsive pricing section for Demo - In Progress.</p>', 'TASK', 'General', 6, 0, '2026-05-30 08:00:00.000', 'cmppw0ntn0007jnwo8o5o54bs', 'cmppw0ntn0004jnwohk75ksl1', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-05-28 19:30:01.508', '2026-05-28 19:30:01.508', NULL, 'HIGH', NULL, NULL),
-('cmppw0nu0000njnwo5k0j7jos', 'DEMO-WEB-3', 'Review header navigation', '<p>Review header navigation for Demo - In Progress.</p>', 'TASK', 'General', 2, 0, '2026-05-29 08:00:00.000', 'cmppw0ntn000cjnwo26jgrybi', 'cmppw0ntn0004jnwohk75ksl1', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-05-28 19:30:01.512', '2026-05-28 19:30:01.512', 'Waiting for final brand navigation copy from the product owner.', 'HIGH', NULL, NULL),
-('cmppw0nu6000rjnwoi1fxshif', 'DEMO-WEB-4', 'Prepare accessibility pass', '<p>Prepare accessibility pass for Demo - In Progress.</p>', 'TASK', 'General', 3, 0, '2026-06-06 08:00:00.000', 'cmppw0ntn0006jnwokauhgrs5', 'cmppw0ntn0004jnwohk75ksl1', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-05-28 19:30:01.518', '2026-05-28 19:30:01.518', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0nue0015jnwogeu18kqo', 'DEMO-API-1', 'Fix invoice sync retry bug', '<p>Fix invoice sync retry bug for Demo - Past Deadline.</p>', 'BUG', 'Backend', 8, 0, '2026-05-24 08:00:00.000', 'cmppw0nua000xjnwor024wgd4', 'cmppw0nua000ujnwoff0sv3b5', 'cmppcyru40002jn7girv8hqlz', 'cmppcyru40002jn7girv8hqlz', '2026-05-28 19:30:01.527', '2026-05-28 19:30:01.527', NULL, 'CRITICAL', NULL, NULL),
-('cmppw0nui0019jnwo27go2uu6', 'DEMO-API-2', 'Add task history audit coverage', '<p>Add task history audit coverage for Demo - Past Deadline.</p>', 'TASK', 'Testing', 5, 0, '2026-05-27 00:00:00.000', 'cmppw0nua000zjnwopok6drlm', 'cmppw0nua000ujnwoff0sv3b5', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-05-28 19:30:01.531', '2026-05-30 08:16:41.343', NULL, 'HIGH', NULL, 'cmps1wqc20001jnhwfpdr9nb6'),
-('cmppw0num001djnwo2alsbxhm', 'DEMO-API-3', 'Document webhook payload contract', '<p>Document webhook payload contract for Demo - Past Deadline.</p>', 'TASK', 'Documentation', 2, 2, '2026-05-20 08:00:00.000', 'cmppw0nua0011jnwofvahah4a', 'cmppw0nua000ujnwoff0sv3b5', 'cmppcyru40002jn7girv8hqlz', 'cmppcyru40002jn7girv8hqlz', '2026-05-28 19:30:01.534', '2026-05-28 19:30:01.534', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0nup001hjnwol8ep37eo', 'DEMO-API-4', 'Harden file upload validation', '<p>Harden file upload validation for Demo - Past Deadline.</p>', 'TASK', 'Backend', 4, 0, '2026-06-03 00:00:00.000', 'cmppw0nua000vjnwokn27yy2a', 'cmppw0nua000ujnwoff0sv3b5', 'cmppcyru40002jn7girv8hqlz', 'cmppcyru40002jn7girv8hqlz', '2026-05-28 19:30:01.538', '2026-05-30 08:16:30.498', NULL, 'MEDIUM', NULL, 'cmps1wqc20001jnhwfpdr9nb6'),
-('cmppw0nuw001vjnwo44tdnvc8', 'DEMO-MOB-1', 'Set up mobile project shell', '<p>Set up mobile project shell for Demo - Not Started.</p>', 'TASK', 'Frontend', 5, 0, '2026-06-05 08:00:00.000', 'cmppw0nut001ljnwo33gh744h', 'cmppw0nut001kjnwo6zfocl8d', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-05-28 19:30:01.544', '2026-05-28 19:30:01.544', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0nv0001zjnwocbmh2ywg', 'DEMO-MOB-2', 'Define notification settings UI', '<p>Define notification settings UI for Demo - Not Started.</p>', 'TASK', 'UI', 3, 0, '2026-06-09 08:00:00.000', 'cmppw0nut001mjnwo6keum3hl', 'cmppw0nut001kjnwo6zfocl8d', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-05-28 19:30:01.548', '2026-05-28 19:30:01.548', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0nv30023jnwoamr96u0o', 'DEMO-MOB-3', 'Plan offline task cache', '<p>Plan offline task cache for Demo - Not Started.</p>', 'TASK', 'Database', 6, 0, '2026-06-13 08:00:00.000', 'cmppw0nut001mjnwo6keum3hl', 'cmppw0nut001kjnwo6zfocl8d', 'cmppcyru40002jn7girv8hqlz', 'cmppcyru40002jn7girv8hqlz', '2026-05-28 19:30:01.551', '2026-05-28 19:30:01.551', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0nv8002hjnwohtjrp7rx', 'DEMO-QA-1', 'Run checkout regression suite', '<p>Run checkout regression suite for Demo - Done.</p>', 'TASK', 'Testing', 4, 4, '2026-05-18 08:00:00.000', 'cmppw0nv6002djnwous7n1d7d', 'cmppw0nv60026jnwoxgu4w9dc', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-05-28 19:30:01.557', '2026-05-28 19:30:01.557', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0nvb002ljnwokylwc4g8', 'DEMO-QA-2', 'Verify payment error states', '<p>Verify payment error states for Demo - Done.</p>', 'BUG', 'Testing', 3, 3, '2026-05-20 08:00:00.000', 'cmppw0nv6002djnwous7n1d7d', 'cmppw0nv60026jnwoxgu4w9dc', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-05-28 19:30:01.560', '2026-05-28 19:30:01.560', NULL, 'HIGH', NULL, NULL),
-('cmppw0nvf002pjnwomkyiye9w', 'DEMO-QA-3', 'Approve release checklist', '<p>Approve release checklist for Demo - Done.</p>', 'TASK', 'Documentation', 2, 2, '2026-05-22 08:00:00.000', 'cmppw0nv6002djnwous7n1d7d', 'cmppw0nv60026jnwoxgu4w9dc', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-05-28 19:30:01.563', '2026-05-28 19:30:01.563', NULL, 'MEDIUM', NULL, NULL),
-('cmppw0nvi002tjnwo07456b16', 'DEMO-QA-4', 'Smoke test production build', '<p>Smoke test production build for Demo - Done.</p>', 'TASK', 'DevOps', 2, 2, '2026-05-24 08:00:00.000', 'cmppw0nv6002djnwous7n1d7d', 'cmppw0nv60026jnwoxgu4w9dc', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-05-28 19:30:01.566', '2026-05-28 19:30:01.566', NULL, 'MEDIUM', NULL, NULL),
-('cmprg7nm30003jnt4v9oqfvmq', 'DEMO-API-5', 'Harden file upload validation subtask', '<h2>Harden file upload validation</h2><p></p>', 'TASK', 'General', 4, 0, NULL, 'cmppw0nua000wjnwoy0l7oftc', 'cmppw0nua000ujnwoff0sv3b5', 'cmpnqut7o0000jn1sb3cup9w3', 'cmppcyru20001jn7geghbr9mu', '2026-05-29 21:43:06.315', '2026-05-30 08:16:20.314', NULL, 'MEDIUM', 'cmppw0nup001hjnwol8ep37eo', 'cmps1wqc20001jnhwfpdr9nb6'),
-('cmps2tm2r0003jnhwkcyv7jjw', 'DEMO-API-6', 'Harden file upload validation', '<ol><li><p>Harden file upload <strong>validation</strong></p></li></ol><p></p>', 'TASK', 'General', 8, 0, NULL, 'cmppw0nua000wjnwoy0l7oftc', 'cmppw0nua000ujnwoff0sv3b5', 'cmpnqut7o0000jn1sb3cup9w3', NULL, '2026-05-30 08:16:02.308', '2026-05-30 08:16:02.308', NULL, 'MEDIUM', NULL, 'cmps1wqc20001jnhwfpdr9nb6');
+('cmq9920mu000fjnaw5h0obu8s', 'DEMO-WEB-1', 'Create landing page wireframe', '<p>Create landing page wireframe for Demo - In Progress.</p>', 'TASK', 'General', 4, 4, '2026-06-06 08:00:00.000', 'cmq9920mq000bjnaw3yqy0sip', 'cmq9920mq0004jnaw0gpfmgrm', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-06-11 08:42:37.110', '2026-06-11 08:42:37.110', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920n0000jjnawv4pwufkn', 'DEMO-WEB-2', 'Build responsive pricing section', '<p>Build responsive pricing section for Demo - In Progress.</p>', 'TASK', 'General', 6, 0, '2026-06-13 08:00:00.000', 'cmq9920mq0007jnawgggw4owr', 'cmq9920mq0004jnaw0gpfmgrm', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-06-11 08:42:37.116', '2026-06-11 08:42:37.116', NULL, 'HIGH', NULL, NULL),
+('cmq9920n6000njnawltwwv5gh', 'DEMO-WEB-3', 'Review header navigation', '<p>Review header navigation for Demo - In Progress.</p>', 'TASK', 'General', 2, 0, '2026-06-12 08:00:00.000', 'cmq9920mq000cjnaw6l156tq9', 'cmq9920mq0004jnaw0gpfmgrm', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-06-11 08:42:37.122', '2026-06-11 08:42:37.122', 'Waiting for final brand navigation copy from the product owner.', 'HIGH', NULL, NULL),
+('cmq9920nc000rjnawu0a5fk14', 'DEMO-WEB-4', 'Prepare accessibility pass', '<p>Prepare accessibility pass for Demo - In Progress.</p>', 'TASK', 'General', 3, 0, '2026-06-20 08:00:00.000', 'cmq9920mq0006jnaw820p2fm4', 'cmq9920mq0004jnaw0gpfmgrm', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-06-11 08:42:37.128', '2026-06-11 08:42:37.128', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920nm0015jnawjwewkw47', 'DEMO-API-1', 'Fix invoice sync retry bug', '<p>Fix invoice sync retry bug for Demo - Past Deadline.</p>', 'BUG', 'Backend', 8, 0, '2026-06-07 08:00:00.000', 'cmq9920nh000xjnaw47kugf62', 'cmq9920ng000ujnawk8l1r0j0', 'cmppcyru40002jn7girv8hqlz', 'cmppcyru40002jn7girv8hqlz', '2026-06-11 08:42:37.138', '2026-06-11 08:42:37.138', NULL, 'CRITICAL', NULL, NULL),
+('cmq9920nq0019jnawzizsz8rc', 'DEMO-API-2', 'Add task history audit coverage', '<p>Add task history audit coverage for Demo - Past Deadline.</p>', 'TASK', 'Testing', 5, 0, '2026-06-10 08:00:00.000', 'cmq9920nh000zjnawq9jnel6b', 'cmq9920ng000ujnawk8l1r0j0', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-06-11 08:42:37.142', '2026-06-11 08:42:37.142', NULL, 'HIGH', NULL, NULL),
+('cmq9920nu001djnawgvw9mgyr', 'DEMO-API-3', 'Document webhook payload contract', '<p>Document webhook payload contract for Demo - Past Deadline.</p>', 'TASK', 'Documentation', 2, 2, '2026-06-03 08:00:00.000', 'cmq9920nh0011jnaw2arrzj5w', 'cmq9920ng000ujnawk8l1r0j0', 'cmppcyru40002jn7girv8hqlz', 'cmppcyru40002jn7girv8hqlz', '2026-06-11 08:42:37.147', '2026-06-11 08:42:37.147', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920nz001hjnawjamfnerg', 'DEMO-API-4', 'Harden file upload validation', '<p>Harden file upload validation for Demo - Past Deadline.</p>', 'TASK', 'Backend', 4, 0, '2026-06-17 08:00:00.000', 'cmq9920nh000vjnawa5ossvqy', 'cmq9920ng000ujnawk8l1r0j0', 'cmppcyru40002jn7girv8hqlz', 'cmppcyru40002jn7girv8hqlz', '2026-06-11 08:42:37.151', '2026-06-11 08:42:37.151', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920o9001vjnawsvhmwq65', 'DEMO-MOB-1', 'Set up mobile project shell', '<p>Set up mobile project shell for Demo - Not Started.</p>', 'TASK', 'Frontend', 5, 0, '2026-06-19 08:00:00.000', 'cmq9920o5001ljnawebbrrqzt', 'cmq9920o5001kjnaw2x2d9l66', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-06-11 08:42:37.161', '2026-06-11 08:42:37.161', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920od001zjnaw6ffacmsn', 'DEMO-MOB-2', 'Define notification settings UI', '<p>Define notification settings UI for Demo - Not Started.</p>', 'TASK', 'UI', 3, 0, '2026-06-23 08:00:00.000', 'cmq9920o5001mjnawsh2wpfk4', 'cmq9920o5001kjnaw2x2d9l66', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-06-11 08:42:37.166', '2026-06-11 08:42:37.166', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920oj0023jnawfhaz9a6b', 'DEMO-MOB-3', 'Plan offline task cache', '<p>Plan offline task cache for Demo - Not Started.</p>', 'TASK', 'Database', 6, 0, '2026-06-27 08:00:00.000', 'cmq9920o5001mjnawsh2wpfk4', 'cmq9920o5001kjnaw2x2d9l66', 'cmppcyru40002jn7girv8hqlz', 'cmppcyru40002jn7girv8hqlz', '2026-06-11 08:42:37.172', '2026-06-11 08:42:37.172', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920ot002hjnaw5h86bod0', 'DEMO-QA-1', 'Run checkout regression suite', '<p>Run checkout regression suite for Demo - Done.</p>', 'TASK', 'Testing', 4, 4, '2026-06-01 08:00:00.000', 'cmq9920op002djnawthbzsbmw', 'cmq9920op0026jnawszt50g2w', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-06-11 08:42:37.181', '2026-06-11 08:42:37.181', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920oy002ljnaw5dxdf1ht', 'DEMO-QA-2', 'Verify payment error states', '<p>Verify payment error states for Demo - Done.</p>', 'BUG', 'Testing', 3, 3, '2026-06-03 08:00:00.000', 'cmq9920op002djnawthbzsbmw', 'cmq9920op0026jnawszt50g2w', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-06-11 08:42:37.186', '2026-06-11 08:42:37.186', NULL, 'HIGH', NULL, NULL),
+('cmq9920p2002pjnawi053x82c', 'DEMO-QA-3', 'Approve release checklist', '<p>Approve release checklist for Demo - Done.</p>', 'TASK', 'Documentation', 2, 2, '2026-06-05 08:00:00.000', 'cmq9920op002djnawthbzsbmw', 'cmq9920op0026jnawszt50g2w', 'cmppcyru20001jn7geghbr9mu', 'cmppcyru20001jn7geghbr9mu', '2026-06-11 08:42:37.190', '2026-06-11 08:42:37.190', NULL, 'MEDIUM', NULL, NULL),
+('cmq9920p5002tjnawhqk3ey8p', 'DEMO-QA-4', 'Smoke test production build', '<p>Smoke test production build for Demo - Done.</p>', 'TASK', 'DevOps', 2, 2, '2026-06-07 08:00:00.000', 'cmq9920op002djnawthbzsbmw', 'cmq9920op0026jnawszt50g2w', 'cmppcyru60003jn7gzuzfhz1u', 'cmppcyru60003jn7gzuzfhz1u', '2026-06-11 08:42:37.194', '2026-06-11 08:42:37.194', NULL, 'MEDIUM', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -239,24 +242,21 @@ INSERT INTO `taskhistory` (`id`, `taskId`, `userId`, `oldStatus`, `newStatus`, `
 ('cmpob2q590005jn3kqn192su3', 'cmpnqut8j000xjn1s9rpk4qcc', 'cmpnqut7o0000jn1sb3cup9w3', 'Unassigned', 'Seed Admin', '2026-05-27 16:55:59.710'),
 ('cmppc07we0007jnds47eugwy4', 'cmpnqut8q0015jn1s4ns18ouu', 'cmpnqut7o0000jn1sb3cup9w3', 'To Do', 'Backlog', '2026-05-28 10:09:48.542'),
 ('cmppc0asn0009jndsiito2twa', 'cmpnqut8q0015jn1s4ns18ouu', 'cmpnqut7o0000jn1sb3cup9w3', 'Backlog', 'To Do', '2026-05-28 10:09:52.296'),
-('cmppw0ntt000hjnwopnxc06sx', 'cmppw0ntr000fjnwouslz44fg', 'cmppcyru20001jn7geghbr9mu', NULL, 'Done', '2026-05-28 19:30:01.506'),
-('cmppw0ntx000ljnwonp95g1ab', 'cmppw0ntv000jjnwo6r76p1vu', 'cmppcyru20001jn7geghbr9mu', NULL, 'In Progress', '2026-05-28 19:30:01.510'),
-('cmppw0nu4000pjnwoc7fe2sru', 'cmppw0nu0000njnwo5k0j7jos', 'cmppcyru20001jn7geghbr9mu', NULL, 'Blocked', '2026-05-28 19:30:01.516'),
-('cmppw0nu8000tjnwoxv5wh8pb', 'cmppw0nu6000rjnwoi1fxshif', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'To Do', '2026-05-28 19:30:01.520'),
-('cmppw0nug0017jnwomxltqtgm', 'cmppw0nue0015jnwogeu18kqo', 'cmppcyru40002jn7girv8hqlz', NULL, 'In Progress', '2026-05-28 19:30:01.529'),
-('cmppw0nuk001bjnwocgq21g24', 'cmppw0nui0019jnwo27go2uu6', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'Testing', '2026-05-28 19:30:01.533'),
-('cmppw0nuo001fjnwor53kf428', 'cmppw0num001djnwo2alsbxhm', 'cmppcyru40002jn7girv8hqlz', NULL, 'Done', '2026-05-28 19:30:01.536'),
-('cmppw0nur001jjnwoxxid8wzf', 'cmppw0nup001hjnwol8ep37eo', 'cmppcyru40002jn7girv8hqlz', NULL, 'Backlog', '2026-05-28 19:30:01.539'),
-('cmppw0nuy001xjnwo4qqbd7lg', 'cmppw0nuw001vjnwo44tdnvc8', 'cmppcyru20001jn7geghbr9mu', NULL, 'Backlog', '2026-05-28 19:30:01.546'),
-('cmppw0nv10021jnwo6k5q6u7a', 'cmppw0nv0001zjnwocbmh2ywg', 'cmppcyru20001jn7geghbr9mu', NULL, 'To Do', '2026-05-28 19:30:01.550'),
-('cmppw0nv40025jnwoxxvba4vm', 'cmppw0nv30023jnwoamr96u0o', 'cmppcyru40002jn7girv8hqlz', NULL, 'To Do', '2026-05-28 19:30:01.553'),
-('cmppw0nva002jjnwoia8ghj6w', 'cmppw0nv8002hjnwohtjrp7rx', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'Done', '2026-05-28 19:30:01.558'),
-('cmppw0nvd002njnwob2ttm6ne', 'cmppw0nvb002ljnwokylwc4g8', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'Done', '2026-05-28 19:30:01.561'),
-('cmppw0nvg002rjnwooxjiy9rt', 'cmppw0nvf002pjnwomkyiye9w', 'cmppcyru20001jn7geghbr9mu', NULL, 'Done', '2026-05-28 19:30:01.565'),
-('cmppw0nvj002vjnwo99pknvgi', 'cmppw0nvi002tjnwo07456b16', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'Done', '2026-05-28 19:30:01.568'),
-('cmprg7nmd0005jnt4mutrqve0', 'cmprg7nm30003jnt4v9oqfvmq', 'cmpnqut7o0000jn1sb3cup9w3', NULL, 'To Do', '2026-05-29 21:43:06.325'),
-('cmprg7rwu0007jnt4aef5b3w2', 'cmprg7nm30003jnt4v9oqfvmq', 'cmpnqut7o0000jn1sb3cup9w3', 'Assignee changed', 'Unassigned -> أحمد الهاشمي', '2026-05-29 21:43:11.887'),
-('cmps2tm2y0005jnhwjsqndmdj', 'cmps2tm2r0003jnhwkcyv7jjw', 'cmpnqut7o0000jn1sb3cup9w3', NULL, 'To Do', '2026-05-30 08:16:02.315');
+('cmq9920mx000hjnawbwy9s1iv', 'cmq9920mu000fjnaw5h0obu8s', 'cmppcyru20001jn7geghbr9mu', NULL, 'Done', '2026-06-11 08:42:37.114'),
+('cmq9920n3000ljnawhunlojxq', 'cmq9920n0000jjnawv4pwufkn', 'cmppcyru20001jn7geghbr9mu', NULL, 'In Progress', '2026-06-11 08:42:37.119'),
+('cmq9920n8000pjnawl8jrsyh4', 'cmq9920n6000njnawltwwv5gh', 'cmppcyru20001jn7geghbr9mu', NULL, 'Blocked', '2026-06-11 08:42:37.124'),
+('cmq9920ne000tjnawdfqygwks', 'cmq9920nc000rjnawu0a5fk14', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'To Do', '2026-06-11 08:42:37.131'),
+('cmq9920no0017jnawr5ghcmm3', 'cmq9920nm0015jnawjwewkw47', 'cmppcyru40002jn7girv8hqlz', NULL, 'In Progress', '2026-06-11 08:42:37.140'),
+('cmq9920nt001bjnawcn2eebu4', 'cmq9920nq0019jnawzizsz8rc', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'Testing', '2026-06-11 08:42:37.145'),
+('cmq9920nx001fjnawjborliit', 'cmq9920nu001djnawgvw9mgyr', 'cmppcyru40002jn7girv8hqlz', NULL, 'Done', '2026-06-11 08:42:37.149'),
+('cmq9920o1001jjnaw5zj746vv', 'cmq9920nz001hjnawjamfnerg', 'cmppcyru40002jn7girv8hqlz', NULL, 'Backlog', '2026-06-11 08:42:37.154'),
+('cmq9920ob001xjnawge4u6500', 'cmq9920o9001vjnawsvhmwq65', 'cmppcyru20001jn7geghbr9mu', NULL, 'Backlog', '2026-06-11 08:42:37.163'),
+('cmq9920oh0021jnaw2hfmxcvd', 'cmq9920od001zjnaw6ffacmsn', 'cmppcyru20001jn7geghbr9mu', NULL, 'To Do', '2026-06-11 08:42:37.169'),
+('cmq9920on0025jnawcp6ygcbc', 'cmq9920oj0023jnawfhaz9a6b', 'cmppcyru40002jn7girv8hqlz', NULL, 'To Do', '2026-06-11 08:42:37.175'),
+('cmq9920ov002jjnaw70qbiq23', 'cmq9920ot002hjnaw5h86bod0', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'Done', '2026-06-11 08:42:37.184'),
+('cmq9920p0002njnawx7iv6ha7', 'cmq9920oy002ljnaw5dxdf1ht', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'Done', '2026-06-11 08:42:37.188'),
+('cmq9920p4002rjnaw0txxvrwp', 'cmq9920p2002pjnawi053x82c', 'cmppcyru20001jn7geghbr9mu', NULL, 'Done', '2026-06-11 08:42:37.192'),
+('cmq9920p7002vjnawzte5g22j', 'cmq9920p5002tjnawhqk3ey8p', 'cmppcyru60003jn7gzuzfhz1u', NULL, 'Done', '2026-06-11 08:42:37.196');
 
 -- --------------------------------------------------------
 
@@ -301,42 +301,6 @@ INSERT INTO `taskstatus` (`id`, `name`, `color`, `order`, `createdAt`, `updatedA
 ('cmpnqut7z000ejn1s3r5wywti', 'QA', '#10b981', 6, '2026-05-27 07:29:58.126', '2026-05-27 07:29:58.126', 'cmpnqut7t0001jn1sua3ia6g8'),
 ('cmpnqut7z000fjn1sk2q1b7n1', 'In Progress', '#f59e0b', 3, '2026-05-27 07:29:58.126', '2026-05-27 07:29:58.126', 'cmpnqut7t0001jn1sua3ia6g8'),
 ('cmpnqut80000hjn1ssw6kv28d', 'Blocked', '#ef4444', 8, '2026-05-27 07:29:58.126', '2026-05-27 07:29:58.126', 'cmpnqut7t0001jn1sua3ia6g8'),
-('cmppw0ntn0005jnwopjjpsk1z', 'Backlog', '#64748b', 1, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0ntn0006jnwokauhgrs5', 'To Do', '#3b82f6', 2, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0ntn0007jnwo8o5o54bs', 'In Progress', '#f59e0b', 3, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0ntn0008jnwouz9fnhjd', 'Review', '#8b5cf6', 4, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0ntn0009jnwow7vo0en9', 'Testing', '#ec4899', 5, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0ntn000ajnwomvnb3srg', 'QA', '#10b981', 6, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0ntn000bjnwoje0y4gak', 'Done', '#22c55e', 7, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0ntn000cjnwo26jgrybi', 'Blocked', '#ef4444', 8, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0ntn000djnwo0tfq3xa8', 'Cancelled', '#94a3b8', 9, '2026-05-28 19:30:01.499', '2026-05-28 19:30:01.499', 'cmppw0ntn0004jnwohk75ksl1'),
-('cmppw0nua000vjnwokn27yy2a', 'Backlog', '#64748b', 1, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nua000wjnwoy0l7oftc', 'To Do', '#3b82f6', 2, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nua000xjnwor024wgd4', 'In Progress', '#f59e0b', 3, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nua000yjnwo4kld75w8', 'Review', '#8b5cf6', 4, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nua000zjnwopok6drlm', 'Testing', '#ec4899', 5, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nua0010jnwo0sanhes7', 'QA', '#10b981', 6, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nua0011jnwofvahah4a', 'Done', '#22c55e', 7, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nua0012jnwod3urnfuf', 'Blocked', '#ef4444', 8, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nua0013jnwoefoxq294', 'Cancelled', '#94a3b8', 9, '2026-05-28 19:30:01.522', '2026-05-28 19:30:01.522', 'cmppw0nua000ujnwoff0sv3b5'),
-('cmppw0nut001ljnwo33gh744h', 'Backlog', '#64748b', 1, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nut001mjnwo6keum3hl', 'To Do', '#3b82f6', 2, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nut001njnwoj8qq3fwg', 'In Progress', '#f59e0b', 3, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nut001ojnwoz0ps0hfl', 'Review', '#8b5cf6', 4, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nut001pjnwoq1n0rxos', 'Testing', '#ec4899', 5, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nut001qjnwozn1bdc6x', 'QA', '#10b981', 6, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nut001rjnwoh86m84sl', 'Done', '#22c55e', 7, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nut001sjnwo490hos79', 'Blocked', '#ef4444', 8, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nut001tjnwom28bcq1o', 'Cancelled', '#94a3b8', 9, '2026-05-28 19:30:01.542', '2026-05-28 19:30:01.542', 'cmppw0nut001kjnwo6zfocl8d'),
-('cmppw0nv60027jnwo47hjtn9i', 'Backlog', '#64748b', 1, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
-('cmppw0nv60028jnwox18w5qln', 'To Do', '#3b82f6', 2, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
-('cmppw0nv60029jnwo2feqtory', 'In Progress', '#f59e0b', 3, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
-('cmppw0nv6002ajnwo7km0zmyz', 'Review', '#8b5cf6', 4, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
-('cmppw0nv6002bjnwors2ahj58', 'Testing', '#ec4899', 5, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
-('cmppw0nv6002cjnwozfzaelnp', 'QA', '#10b981', 6, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
-('cmppw0nv6002djnwous7n1d7d', 'Done', '#22c55e', 7, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
-('cmppw0nv6002ejnwodmikrhgt', 'Blocked', '#ef4444', 8, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
-('cmppw0nv6002fjnwoc51bvql6', 'Cancelled', '#94a3b8', 9, '2026-05-28 19:30:01.554', '2026-05-28 19:30:01.554', 'cmppw0nv60026jnwoxgu4w9dc'),
 ('cmppwcatq0009jnyc9fs9qhe0', 'Backlog', '#64748b', 1, '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.527', 'cmppwcatq0008jnyczas71a8l'),
 ('cmppwcatq000ajnycayfpvapp', 'To Do', '#3b82f6', 2, '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.527', 'cmppwcatq0008jnyczas71a8l'),
 ('cmppwcatq000bjnyc91ruwkq2', 'In Progress', '#f59e0b', 3, '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.527', 'cmppwcatq0008jnyczas71a8l'),
@@ -345,7 +309,43 @@ INSERT INTO `taskstatus` (`id`, `name`, `color`, `order`, `createdAt`, `updatedA
 ('cmppwcatq000ejnycpfbkk0ki', 'QA', '#10b981', 6, '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.527', 'cmppwcatq0008jnyczas71a8l'),
 ('cmppwcatq000fjnycvyr7r1o3', 'Done', '#22c55e', 7, '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.527', 'cmppwcatq0008jnyczas71a8l'),
 ('cmppwcatq000gjnycwcfnnf2o', 'Blocked', '#ef4444', 8, '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.527', 'cmppwcatq0008jnyczas71a8l'),
-('cmppwcatq000hjnycyc867flw', 'Cancelled', '#94a3b8', 9, '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.527', 'cmppwcatq0008jnyczas71a8l');
+('cmppwcatq000hjnycyc867flw', 'Cancelled', '#94a3b8', 9, '2026-05-28 19:39:04.527', '2026-05-28 19:39:04.527', 'cmppwcatq0008jnyczas71a8l'),
+('cmq9920mq0005jnawmt7jw44r', 'Backlog', '#64748b', 1, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920mq0006jnaw820p2fm4', 'To Do', '#3b82f6', 2, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920mq0007jnawgggw4owr', 'In Progress', '#f59e0b', 3, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920mq0008jnawh2purs83', 'Review', '#8b5cf6', 4, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920mq0009jnawvosh10tj', 'Testing', '#ec4899', 5, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920mq000ajnaw1j2c2hue', 'QA', '#10b981', 6, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920mq000bjnaw3yqy0sip', 'Done', '#22c55e', 7, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920mq000cjnaw6l156tq9', 'Blocked', '#ef4444', 8, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920mq000djnawo9qmqkd2', 'Cancelled', '#94a3b8', 9, '2026-06-11 08:42:37.106', '2026-06-11 08:42:37.106', 'cmq9920mq0004jnaw0gpfmgrm'),
+('cmq9920nh000vjnawa5ossvqy', 'Backlog', '#64748b', 1, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920nh000wjnawuaj9e0af', 'To Do', '#3b82f6', 2, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920nh000xjnaw47kugf62', 'In Progress', '#f59e0b', 3, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920nh000yjnaw5hblizl8', 'Review', '#8b5cf6', 4, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920nh000zjnawq9jnel6b', 'Testing', '#ec4899', 5, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920nh0010jnawert2ffd2', 'QA', '#10b981', 6, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920nh0011jnaw2arrzj5w', 'Done', '#22c55e', 7, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920nh0012jnawauk23e6j', 'Blocked', '#ef4444', 8, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920nh0013jnawnl5ywbkl', 'Cancelled', '#94a3b8', 9, '2026-06-11 08:42:37.133', '2026-06-11 08:42:37.133', 'cmq9920ng000ujnawk8l1r0j0'),
+('cmq9920o5001ljnawebbrrqzt', 'Backlog', '#64748b', 1, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920o5001mjnawsh2wpfk4', 'To Do', '#3b82f6', 2, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920o5001njnawmljavje1', 'In Progress', '#f59e0b', 3, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920o5001ojnawvvyrt1k4', 'Review', '#8b5cf6', 4, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920o5001pjnawh4oi9mah', 'Testing', '#ec4899', 5, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920o5001qjnaw9l04bh7q', 'QA', '#10b981', 6, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920o5001rjnawop9jlvn4', 'Done', '#22c55e', 7, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920o5001sjnawef5b2j0s', 'Blocked', '#ef4444', 8, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920o5001tjnawxlycmsat', 'Cancelled', '#94a3b8', 9, '2026-06-11 08:42:37.158', '2026-06-11 08:42:37.158', 'cmq9920o5001kjnaw2x2d9l66'),
+('cmq9920op0027jnawrb4vdb75', 'Backlog', '#64748b', 1, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w'),
+('cmq9920op0028jnawfh23oyfk', 'To Do', '#3b82f6', 2, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w'),
+('cmq9920op0029jnaw7afcc21r', 'In Progress', '#f59e0b', 3, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w'),
+('cmq9920op002ajnawemr5itdz', 'Review', '#8b5cf6', 4, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w'),
+('cmq9920op002bjnaw4z1y0nin', 'Testing', '#ec4899', 5, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w'),
+('cmq9920op002cjnawi0c8yrp0', 'QA', '#10b981', 6, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w'),
+('cmq9920op002djnawthbzsbmw', 'Done', '#22c55e', 7, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w'),
+('cmq9920op002ejnawhsg797p4', 'Blocked', '#ef4444', 8, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w'),
+('cmq9920op002fjnaw4ti3178n', 'Cancelled', '#94a3b8', 9, '2026-06-11 08:42:37.178', '2026-06-11 08:42:37.178', 'cmq9920op0026jnawszt50g2w');
 
 -- --------------------------------------------------------
 
@@ -370,10 +370,10 @@ CREATE TABLE `user` (
 
 INSERT INTO `user` (`id`, `email`, `name`, `password`, `role`, `createdAt`, `updatedAt`, `isActive`) VALUES
 ('cmpnqut7o0000jn1sb3cup9w3', 'admin@digibooking.com', 'Seed Admin', '$2b$10$UWFtPMFMNEX3r1vFpETu/OMA5uMDS42S92QDdEha7uX.XccJw7aBu', 'ADMIN', '2026-05-27 07:29:58.116', '2026-05-27 07:29:58.116', 1),
-('cmppcyrtv0000jn7gwpqwux49', 'admin.demo@digibooking.local', 'محمد بن علي', '$2b$10$4GHDN.LQj7ckMSrMI.SEg.1.E.2/5s/zMIe/fDdSHdYUuV0j0U/ui', 'ADMIN', '2026-05-28 10:36:40.675', '2026-05-28 20:07:14.760', 1),
-('cmppcyru20001jn7geghbr9mu', 'frontend.demo@digibooking.local', 'أحمد الهاشمي', '$2b$10$4GHDN.LQj7ckMSrMI.SEg.1.E.2/5s/zMIe/fDdSHdYUuV0j0U/ui', 'USER', '2026-05-28 10:36:40.682', '2026-05-28 20:06:24.971', 1),
-('cmppcyru40002jn7girv8hqlz', 'backend.demo@digibooking.local', 'ليلى منصور', '$2b$10$4GHDN.LQj7ckMSrMI.SEg.1.E.2/5s/zMIe/fDdSHdYUuV0j0U/ui', 'USER', '2026-05-28 10:36:40.685', '2026-05-28 19:30:01.480', 1),
-('cmppcyru60003jn7gzuzfhz1u', 'qa.demo@digibooking.local', 'سارة بن يوسف', '$2b$10$4GHDN.LQj7ckMSrMI.SEg.1.E.2/5s/zMIe/fDdSHdYUuV0j0U/ui', 'USER', '2026-05-28 10:36:40.687', '2026-05-28 20:04:01.942', 1);
+('cmppcyrtv0000jn7gwpqwux49', 'admin.demo@digibooking.local', 'محمد بن علي', '$2b$10$4GHDN.LQj7ckMSrMI.SEg.1.E.2/5s/zMIe/fDdSHdYUuV0j0U/ui', 'ADMIN', '2026-05-28 10:36:40.675', '2026-06-11 08:42:37.059', 1),
+('cmppcyru20001jn7geghbr9mu', 'frontend.demo@digibooking.local', 'أحمد الهاشمي', '$2b$10$4GHDN.LQj7ckMSrMI.SEg.1.E.2/5s/zMIe/fDdSHdYUuV0j0U/ui', 'USER', '2026-05-28 10:36:40.682', '2026-06-11 08:42:37.067', 1),
+('cmppcyru40002jn7girv8hqlz', 'backend.demo@digibooking.local', 'ليلى منصور', '$2b$10$4GHDN.LQj7ckMSrMI.SEg.1.E.2/5s/zMIe/fDdSHdYUuV0j0U/ui', 'USER', '2026-05-28 10:36:40.685', '2026-06-11 08:42:37.070', 1),
+('cmppcyru60003jn7gzuzfhz1u', 'qa.demo@digibooking.local', 'سارة بن يوسف', '$2b$10$AyK7dvpNPIivywtOeG1OBe7Hb.RdSNoGJ0r8BhTsqzlc9PlM3T5NC', 'USER', '2026-05-28 10:36:40.687', '2026-06-11 16:05:14.167', 1);
 
 -- --------------------------------------------------------
 
@@ -389,6 +389,17 @@ CREATE TABLE `worklog` (
   `notes` longtext DEFAULT NULL,
   `date` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `createdAt` datetime(3) NOT NULL DEFAULT current_timestamp(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_tagtotask`
+--
+
+CREATE TABLE `_tagtotask` (
+  `A` varchar(191) NOT NULL,
+  `B` varchar(191) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -431,6 +442,13 @@ ALTER TABLE `project`
 ALTER TABLE `sprint`
   ADD PRIMARY KEY (`id`),
   ADD KEY `sprint_projectId_idx` (`projectId`);
+
+--
+-- Indexes for table `tag`
+--
+ALTER TABLE `tag`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `tag_name_key` (`name`);
 
 --
 -- Indexes for table `task`
@@ -484,6 +502,13 @@ ALTER TABLE `worklog`
   ADD PRIMARY KEY (`id`),
   ADD KEY `worklog_taskId_idx` (`taskId`),
   ADD KEY `worklog_userId_idx` (`userId`);
+
+--
+-- Indexes for table `_tagtotask`
+--
+ALTER TABLE `_tagtotask`
+  ADD UNIQUE KEY `_TagToTask_AB_unique` (`A`,`B`),
+  ADD KEY `_TagToTask_B_index` (`B`);
 
 --
 -- Constraints for dumped tables
@@ -553,6 +578,13 @@ ALTER TABLE `taskstatus`
 ALTER TABLE `worklog`
   ADD CONSTRAINT `worklog_taskId_fkey` FOREIGN KEY (`taskId`) REFERENCES `task` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `worklog_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `user` (`id`) ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_tagtotask`
+--
+ALTER TABLE `_tagtotask`
+  ADD CONSTRAINT `_TagToTask_A_fkey` FOREIGN KEY (`A`) REFERENCES `tag` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `_TagToTask_B_fkey` FOREIGN KEY (`B`) REFERENCES `task` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
