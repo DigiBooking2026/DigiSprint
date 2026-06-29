@@ -42,6 +42,10 @@ model Project {
   tasks       Task[]
   statuses    TaskStatus[]
   sprints     Sprint[]
+  ownerId     String?
+  owner       User?        @relation("project_owner", fields: [ownerId], references: [id])
+  isPrivate   Boolean      @default(false)
+  members     User[]       @relation("project_members")
   
   @@map("project")
 }
@@ -195,6 +199,8 @@ model User {
   updatedAt     DateTime      @updatedAt
   assignedTasks Task[]        @relation("task_assignee")
   ownedTasks    Task[]        @relation("task_owner")
+  ownedProjects Project[]     @relation("project_owner")
+  memberOfProjects Project[]  @relation("project_members")
   histories     TaskHistory[]
   comments      Comment[]
   worklogs      Worklog[]

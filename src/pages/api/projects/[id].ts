@@ -9,6 +9,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { id } = req.query;
   const projectId = String(id);
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { role: true },
+  });
+
   if (req.method === 'GET') {
     try {
       const project = await prisma.project.findFirst({
@@ -16,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         include: {
           attachments: true,
           statuses: true,
+          members: { select: { id: true, name: true, email: true } },
           tasks: {
             include: {
               status: true,
@@ -35,26 +41,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { name, description, prefix, startDate, deadline, attachmentIds } = req.body;
+      const { name, description, prefix, startDate, deadline, attachmentIds, ownerId, isPrivate } = req.body;
       if (!name || !prefix) return res.status(400).json({ error: "Name and Prefix are required" });
       if (!startDate || !deadline) return res.status(400).json({ error: "Start date and deadline are required" });
 
+      const updateData: any = {
+        name,
+        description,
+        prefix,
+        startDate: new Date(startDate),
+        deadline: new Date(deadline),
+        isPrivate: typeof isPrivate === 'boolean' ? isPrivate : undefined,
+        attachments: attachmentIds
+          ? { set: attachmentIds.map((id: string) => ({ id })) }
+          : undefined,
+      };
+
+      if (ownerId && currentUser?.role === 'ADMIN') {
+        updateData.ownerId = ownerId;
+      }
+
       const project = await prisma.project.update({
         where: { id: projectId },
-        data: {
-          name,
-          description,
-          prefix,
-          startDate: new Date(startDate),
-          deadline: new Date(deadline),
-          attachments: attachmentIds
-            ? { set: attachmentIds.map((id: string) => ({ id })) }
-            : undefined,
-        },
+        data: updateData,
         include: {
           _count: { select: { tasks: true } },
           attachments: true,
           statuses: true,
+          members: { select: { id: true, name: true, email: true } },
           tasks: {
             select: {
               id: true,
@@ -75,11 +89,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'DELETE') {
     try {
-      const currentUser = await prisma.user.findUnique({
-        where: { id: session.userId },
-        select: { role: true },
-      });
-
       if (currentUser?.role !== 'ADMIN') {
         return res.status(403).json({ error: "Only admins can delete projects" });
       }

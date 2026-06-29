@@ -6,10 +6,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getSessionFromRequest(req);
   if (!session) return res.status(401).json({ error: "Unauthorized" });
 
+  const currentUser = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
+  if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+
   if (req.method === 'GET') {
     try {
+      let projectFilter: any = { deletedAt: null };
+      if (currentUser.role !== 'ADMIN') {
+        projectFilter.OR = [
+          { isPrivate: false },
+          { ownerId: session.userId },
+          { members: { some: { id: session.userId } } }
+        ];
+      }
+
       const projects = await prisma.project.findMany({
-        where: { deletedAt: null },
+        where: projectFilter,
         orderBy: { createdAt: "desc" },
         include: {
           _count: { select: { tasks: true } },
@@ -34,9 +46,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { name, description, prefix, attachmentIds, startDate, deadline } = req.body;
+      const { name, description, prefix, attachmentIds, startDate, deadline, isPrivate } = req.body;
       if (!name || !prefix) return res.status(400).json({ error: "Name and Prefix are required" });
       if (!startDate || !deadline) return res.status(400).json({ error: "Start date and deadline are required" });
+
+      if (currentUser.role === 'USER') {
+        return res.status(403).json({ error: "Only PMs and Admins can create projects" });
+      }
 
       const defaultStatuses = [
         { name: 'Backlog', color: '#64748b', order: 1 },
@@ -57,6 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           prefix,
           startDate: startDate ? new Date(startDate) : null,
           deadline: deadline ? new Date(deadline) : null,
+          ownerId: session.userId,
+          isPrivate: Boolean(isPrivate),
           statuses: {
             create: defaultStatuses
           },

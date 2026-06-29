@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert, Settings } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { toast } from "sonner";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
 import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project, Tag } from "@/generated/prisma";
 import {
@@ -62,8 +64,10 @@ export type Sprint = {
 };
 
 type ExtendedProject = Project & {
+  isPrivate?: boolean;
   tasks?: ExtendedTask[];
   statuses?: TaskStatus[];
+  members?: { id: string; name: string | null; email: string }[];
 };
 
 const isDoneStatus = (name?: string) => /done|closed|complete|cancelled/i.test(name || "");
@@ -350,6 +354,89 @@ export default function ProjectBoard() {
     message: "",
     onConfirm: () => {}
   });
+
+  // Project Settings State
+  const [openProjectSettings, setOpenProjectSettings] = useState(false);
+  const [editProjectName, setEditProjectName] = useState("");
+  const [editProjectPrefix, setEditProjectPrefix] = useState("");
+  const [editProjectStartDate, setEditProjectStartDate] = useState("");
+  const [editProjectDeadline, setEditProjectDeadline] = useState("");
+  const [editProjectIsPrivate, setEditProjectIsPrivate] = useState(false);
+
+  // Members Management State
+  const [openMembersDialog, setOpenMembersDialog] = useState(false);
+  const [projectMembers, setProjectMembers] = useState<{id: string, name: string | null, email: string}[]>([]);
+  const [newMemberId, setNewMemberId] = useState("");
+
+  const handleEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch(`/api/projects/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editProjectName,
+        prefix: editProjectPrefix,
+        startDate: editProjectStartDate || null,
+        deadline: editProjectDeadline || null,
+        isPrivate: editProjectIsPrivate,
+      }),
+    });
+    if (res.ok) {
+      setOpenProjectSettings(false);
+      fetchData();
+      toast.success("Project updated successfully");
+    } else {
+      toast.error("Failed to update project");
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    const res = await fetch(`/api/projects/${projectId}`, {
+      method: "DELETE"
+    });
+    if (res.ok) {
+      toast.success("Project deleted successfully");
+      router.push("/");
+    } else {
+      toast.error("Failed to delete project");
+    }
+  };
+
+  const fetchMembers = async () => {
+    const res = await fetch(`/api/projects/${projectId}/members`);
+    if (res.ok) {
+      setProjectMembers(await res.json());
+    }
+  };
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemberId) return;
+    const res = await fetch(`/api/projects/${projectId}/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: newMemberId }),
+    });
+    if (res.ok) {
+      toast.success("Member added successfully");
+      setNewMemberId("");
+      fetchMembers();
+    } else {
+      toast.error("Failed to add member");
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    const res = await fetch(`/api/projects/${projectId}/members?userId=${userId}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      toast.success("Member removed successfully");
+      fetchMembers();
+    } else {
+      toast.error("Failed to remove member");
+    }
+  };
 
   const showConfirm = (title: string, message: string, onConfirm: () => void) => {
     setConfirmConfig({ title, message, onConfirm });
@@ -775,7 +862,45 @@ export default function ProjectBoard() {
       <main className="flex-1 container mx-auto px-4 py-8 flex flex-col h-[calc(100vh-64px)]">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{project?.name || "Project Board"}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">{project?.name || "Project Board"}</h1>
+              {project && (currentUser?.role === 'ADMIN' || currentUser?.id === project?.ownerId) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  } />
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => {
+                      setEditProjectName(project.name);
+                      setEditProjectPrefix(project.prefix);
+                      setEditProjectStartDate(project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "");
+                      setEditProjectDeadline(project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : "");
+                      setEditProjectIsPrivate(project.isPrivate || false);
+                      setOpenProjectSettings(true);
+                    }}>
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      Edit Project
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      fetchMembers();
+                      setOpenMembersDialog(true);
+                    }}>
+                      <UserIcon className="h-4 w-4 mr-2" />
+                      Manage Members
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => showConfirm("Delete Project", "Are you sure you want to delete this project? All tasks, sprints, and data will be permanently removed.", handleDeleteProject)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Project
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
             <p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
               <Clock className="h-4 w-4" /> Total Story Points: <span className="font-semibold text-foreground">{totalStoryPoints} hrs</span>
               {projectIsOverdue && (
@@ -1832,6 +1957,78 @@ export default function ProjectBoard() {
       {/* Confirmation Modal */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-md"><DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> {confirmConfig.title}</DialogTitle></DialogHeader><div className="py-4 text-muted-foreground font-medium">{confirmConfig.message}</div><div className="flex justify-end gap-3 pt-2"><Button variant="ghost" onClick={() => setConfirmOpen(false)}>Cancel</Button><Button variant="destructive" onClick={() => { confirmConfig.onConfirm(); setConfirmOpen(false); }}>Confirm Delete</Button></div></DialogContent>
+      </Dialog>
+      {/* Edit Project Modal */}
+      <Dialog open={openProjectSettings} onOpenChange={setOpenProjectSettings}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditProject} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Project Name</Label><Input required value={editProjectName} onChange={(e) => setEditProjectName(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Prefix</Label><Input required value={editProjectPrefix} onChange={(e) => setEditProjectPrefix(e.target.value)} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Start Date</Label><Input type="date" required value={editProjectStartDate} onChange={(e) => setEditProjectStartDate(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Deadline</Label><Input type="date" required value={editProjectDeadline} onChange={(e) => setEditProjectDeadline(e.target.value)} /></div>
+            </div>
+            <div className="flex items-center gap-2 py-2">
+              <input type="checkbox" id="editPrivate" className="h-4 w-4" checked={editProjectIsPrivate} onChange={(e) => setEditProjectIsPrivate(e.target.checked)} />
+              <Label htmlFor="editPrivate">Private Project (Only members can view)</Label>
+            </div>
+            <Button type="submit" className="w-full">Save Changes</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Members Management Modal */}
+      <Dialog open={openMembersDialog} onOpenChange={setOpenMembersDialog}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Manage Project Members</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 mt-4">
+            <form onSubmit={handleAddMember} className="flex items-end gap-4">
+              <div className="flex-1 space-y-2">
+                <Label>Add Member</Label>
+                <Select value={newMemberId} onValueChange={(val) => setNewMemberId(val || "")}>
+                  <SelectTrigger><SelectValue placeholder="Select a user to add" /></SelectTrigger>
+                  <SelectContent>
+                    {users
+                      .filter(u => !projectMembers.some(pm => pm.id === u.id))
+                      .map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" disabled={!newMemberId}>Add</Button>
+            </form>
+            
+            <div className="space-y-2 border rounded-md p-4 bg-muted/20">
+              <h3 className="text-sm font-semibold mb-3">Current Members ({projectMembers.length})</h3>
+              {projectMembers.length === 0 ? (
+                <div className="text-xs text-muted-foreground italic text-center py-4">No members added yet.</div>
+              ) : (
+                <ul className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {projectMembers.map(member => (
+                    <li key={member.id} className="flex items-center justify-between bg-card border rounded p-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4 text-muted-foreground" />
+                        <span>{member.name || member.email}</span>
+                        {member.id === project?.ownerId && <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">OWNER</span>}
+                      </div>
+                      {member.id !== project?.ownerId && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveMember(member.id)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );

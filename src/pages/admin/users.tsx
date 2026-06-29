@@ -10,6 +10,7 @@ import { Trash2, UserCog, AlertTriangle, Power, PowerOff, Key } from "lucide-rea
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User } from "@/generated/prisma";
+import { toast } from "sonner";
 
 type AdminUser = User & { isActive: boolean };
 
@@ -67,7 +68,12 @@ export default function AdminUsers() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, role }),
     });
-    if (res.ok) fetchUsers();
+    if (res.ok) {
+      toast.success("User role updated successfully");
+      fetchUsers();
+    } else {
+      toast.error("Failed to update user role");
+    }
   };
 
   const openStatusConfirmation = (user: AdminUser) => {
@@ -86,10 +92,11 @@ export default function AdminUsers() {
     if (res.ok) {
       setStatusConfirmOpen(false);
       setUserToUpdateStatus(null);
+      toast.success("User status updated successfully");
       fetchUsers();
     } else {
       const err = await res.json();
-      alert(err.error || "Failed to update user status");
+      toast.error(err.error || "Failed to update user status");
     }
   };
 
@@ -106,7 +113,10 @@ export default function AdminUsers() {
     if (res.ok) {
       setConfirmOpen(false);
       setUserToDelete(null);
+      toast.success("User deleted successfully");
       fetchUsers();
+    } else {
+      toast.error("Failed to delete user");
     }
   };
 
@@ -147,7 +157,7 @@ export default function AdminUsers() {
         setUserToChangePassword(null);
         setNewPassword("");
         setConfirmPassword("");
-        alert("Password updated successfully.");
+        toast.success("Password updated successfully.");
       } else {
         const data = await res.json();
         setPasswordError(data.error || "Failed to update password.");
@@ -199,6 +209,7 @@ export default function AdminUsers() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="USER">USER</SelectItem>
+                          <SelectItem value="PM">PM</SelectItem>
                           <SelectItem value="ADMIN">ADMIN</SelectItem>
                         </SelectContent>
                       </Select>

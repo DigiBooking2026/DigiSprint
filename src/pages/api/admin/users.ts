@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { userId, role, isActive, password } = req.body;
       if (!userId) return res.status(400).json({ error: "userId is required" });
-      if (role !== undefined && !["USER", "ADMIN"].includes(role)) {
+      if (role !== undefined && !["USER", "PM", "ADMIN"].includes(role)) {
         return res.status(400).json({ error: "Invalid role" });
       }
       if (isActive !== undefined && typeof isActive !== "boolean") {

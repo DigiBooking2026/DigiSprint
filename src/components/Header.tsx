@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, LogOut, Bell } from "lucide-react";
+import { Moon, Sun, LogOut, Bell, UserCircle } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -184,6 +184,13 @@ export function Header() {
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
           </Button>
+
+          <Link href="/profile">
+            <Button variant="ghost" size="icon" title="Profile">
+              <UserCircle className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+              <span className="sr-only">Profile</span>
+            </Button>
+          </Link>
 
           <Button
             variant="outline"

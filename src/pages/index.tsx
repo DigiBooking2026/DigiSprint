@@ -14,6 +14,7 @@ import { FileUpload, AttachmentList } from "@/components/FileUpload";
 import { Project, Attachment, User } from "@/generated/prisma";
 
 type ProjectWithWork = Project & {
+  isPrivate?: boolean;
   _count?: { tasks: number };
   attachments?: Attachment[];
   tasks?: {
@@ -71,6 +72,7 @@ export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<ProjectWithWork | null>(null);
@@ -81,6 +83,8 @@ export default function Dashboard() {
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [ownerId, setOwnerId] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   // Confirmation Modal
@@ -108,13 +112,19 @@ export default function Dashboard() {
     setDescription("");
     setStartDate("");
     setDeadline("");
+    setIsPrivate(false);
     setAttachments([]);
   };
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then(res => res.ok ? res.json() : null)
-      .then(user => setCurrentUser(user));
+      .then(user => {
+        setCurrentUser(user);
+        if (user?.role === 'ADMIN') {
+          fetch("/api/admin/users").then(r => r.ok && r.json()).then(setUsers);
+        }
+      });
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
@@ -131,6 +141,7 @@ export default function Dashboard() {
         description,
         startDate: startDate || null,
         deadline: deadline || null,
+        isPrivate,
         attachmentIds: attachments.map(a => a.id)
       }),
     });
@@ -150,6 +161,9 @@ export default function Dashboard() {
     setDescription(project.description || "");
     setStartDate(project.startDate ? new Date(project.startDate).toISOString().split("T")[0] : "");
     setDeadline(project.deadline ? new Date(project.deadline).toISOString().split("T")[0] : "");
+    setIsPrivate(project.isPrivate || false);
+    // @ts-ignore
+    setOwnerId(project.ownerId || "");
     setAttachments(project.attachments || []);
     setEditOpen(true);
   };
@@ -167,6 +181,8 @@ export default function Dashboard() {
         description,
         startDate,
         deadline,
+        isPrivate,
+        ownerId: currentUser?.role === 'ADMIN' ? ownerId : undefined,
         attachmentIds: attachments.map(a => a.id),
       }),
     });
@@ -320,19 +336,20 @@ export default function Dashboard() {
               <p className="text-muted-foreground mt-1">Manage your teams and user stories.</p>
             </div>
 
-          <div className="flex items-center gap-3">
-            <Dialog open={open} onOpenChange={(nextOpen) => {
-              setOpen(nextOpen);
-              if (nextOpen) resetProjectForm();
-            }}>
-              <DialogTrigger 
-                render={
-                  <Button className="gap-2">
-                    <PlusCircle className="h-4 w-4" />
-                    Create Project
-                  </Button>
-                }
-              />
+          {(currentUser?.role === 'ADMIN' || currentUser?.role === 'PM') && (
+            <div className="flex items-center gap-3">
+              <Dialog open={open} onOpenChange={(nextOpen) => {
+                setOpen(nextOpen);
+                if (nextOpen) resetProjectForm();
+              }}>
+                <DialogTrigger 
+                  render={
+                    <Button className="gap-2">
+                      <PlusCircle className="h-4 w-4" />
+                      Create Project
+                    </Button>
+                  }
+                />
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Create new project</DialogTitle>
@@ -362,6 +379,10 @@ export default function Dashboard() {
                     <Label>Description</Label>
                     <RichTextEditor content={description} onChange={setDescription} />
                   </div>
+                  <div className="flex items-center gap-2 py-2">
+                    <input type="checkbox" id="createPrivate" className="h-4 w-4" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+                    <Label htmlFor="createPrivate">Private Project (Only members can view)</Label>
+                  </div>
                   <div className="space-y-2">
                     <Label>Attachments</Label>
                     <FileUpload onUploadComplete={(a) => setAttachments([...attachments, a])} />
@@ -373,7 +394,8 @@ export default function Dashboard() {
                 </form>
               </DialogContent>
             </Dialog>
-          </div>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -519,9 +541,30 @@ export default function Dashboard() {
                 <Input id="edit-deadline" type="date" required value={deadline} onChange={(e) => setDeadline(e.target.value)} />
               </div>
             </div>
+            
+            {currentUser?.role === 'ADMIN' && (
+              <div className="space-y-2">
+                <Label>Project Owner (PM)</Label>
+                <select 
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  value={ownerId}
+                  onChange={(e) => setOwnerId(e.target.value)}
+                >
+                  <option value="">Select an Owner...</option>
+                  {users.filter(u => u.role === 'PM' || u.role === 'ADMIN').map(u => (
+                    <option key={u.id} value={u.id}>{u.name || u.email} ({u.role})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Description</Label>
               <RichTextEditor content={description} onChange={setDescription} />
+            </div>
+            <div className="flex items-center gap-2 py-2">
+              <input type="checkbox" id="editPrivate" className="h-4 w-4" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+              <Label htmlFor="editPrivate">Private Project (Only members can view)</Label>
             </div>
             <div className="space-y-2">
               <Label>Attachments</Label>
