@@ -303,6 +303,41 @@ function DroppableStatusColumn({
   );
 }
 
+function SprintDroppableArea({ id, children, className, isSprint }: { id: string, children: React.ReactNode, className?: string, isSprint?: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id, data: { type: isSprint ? 'sprint' : 'backlog' } });
+  return (
+    <div ref={setNodeRef} className={`${className || ''} ${isOver ? 'bg-primary/5 ring-1 ring-primary/50' : ''} transition-colors min-h-[50px] flex flex-col`}>
+      {children}
+    </div>
+  );
+}
+
+function SprintDraggableTask({ task, statuses, handleOpenTask }: { task: ExtendedTask, statuses: TaskStatus[], handleOpenTask: (t: ExtendedTask) => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
+    id: task.id,
+    data: task,
+  });
+
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
+  
+  if (isDragging) {
+    return <div ref={setNodeRef} style={style} className="opacity-50 border-b last:border-0 p-2 flex items-center bg-card">Dragging {task.ticketId}...</div>;
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center border-b last:border-0 hover:bg-muted/30 cursor-pointer bg-card group transition-colors" onClick={() => handleOpenTask(task)}>
+      <div {...listeners} {...attributes} className="p-2 cursor-grab active:cursor-grabbing text-muted-foreground opacity-20 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
+        <GripVertical className="h-4 w-4" />
+      </div>
+      <div className="p-2 w-24 font-mono text-xs text-muted-foreground">{task.ticketId}</div>
+      <div className="p-2 flex-1 font-medium">{task.title}</div>
+      <div className="p-2 w-32"><span className="text-[10px] font-bold uppercase" style={{ color: statuses.find(s => s.id === task.statusId)?.color || '#888' }}>{statuses.find(s => s.id === task.statusId)?.name}</span></div>
+      <div className="p-2 w-16 text-center font-medium">{task.storyPoints}h</div>
+    </div>
+  );
+}
+
+
 export default function ProjectBoard() {
   const router = useRouter();
   const { id: projectId } = router.query;
@@ -749,6 +784,27 @@ export default function ProjectBoard() {
 
     const overId = String(over.id);
 
+    if (viewMode === 'sprints') {
+      const overData = over.data.current as { type?: string } | undefined;
+      let newSprintId: string | null | undefined = undefined;
+      
+      if (overId.startsWith('sprint-')) {
+        newSprintId = overId.replace('sprint-', '');
+      } else if (overId === 'backlog') {
+        newSprintId = null;
+      } else if (overData?.type === 'sprint' || overData?.type === 'backlog') {
+        const overTask = tasks.find(t => t.id === over.id);
+        if (overTask) {
+          newSprintId = overTask.sprintId;
+        }
+      }
+
+      if (newSprintId !== undefined && activeTask.sprintId !== newSprintId) {
+        setTasks(prev => prev.map(t => t.id === active.id ? { ...t, sprintId: newSprintId } : t));
+      }
+      return;
+    }
+
     if (overId.startsWith('status-')) {
       const newStatusId = overId.replace('status-', '');
       setLastOverStatus(newStatusId);
@@ -770,6 +826,10 @@ export default function ProjectBoard() {
     setActiveId(null);
     
     if (!over) {
+      if (viewMode === 'sprints') {
+        fetchData();
+        return;
+      }
       const activeTask = tasks.find(t => t.id === String(active.id));
       const fallbackStatus = lastOverStatus || activeTask?.statusId || null;
       if (fallbackStatus && dragStartStatus !== fallbackStatus) {
@@ -783,6 +843,33 @@ export default function ProjectBoard() {
     }
 
     const overId = String(over.id);
+
+    if (viewMode === 'sprints') {
+      let newSprintId: string | null | undefined = undefined;
+      const overData = over.data.current as { type?: string } | undefined;
+      
+      if (overId.startsWith('sprint-')) {
+        newSprintId = overId.replace('sprint-', '');
+      } else if (overId === 'backlog') {
+        newSprintId = null;
+      } else if (overData?.type === 'sprint' || overData?.type === 'backlog') {
+        const overTask = tasks.find(t => t.id === over.id);
+        if (overTask) newSprintId = overTask.sprintId;
+      }
+
+      if (newSprintId !== undefined) {
+        await fetch(`/api/tasks/${active.id}`, {
+          method: 'PATCH',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sprintId: newSprintId })
+        });
+        fetchData();
+      } else {
+        fetchData();
+      }
+      return;
+    }
+
     let newStatusId: string | null = null;
 
     if (overId.startsWith('status-')) {
@@ -802,6 +889,7 @@ export default function ProjectBoard() {
     setDragStartStatus(null);
     setLastOverStatus(null);
   };
+
 
   if (!router.isReady) return null;
   const getUserDisplay = (userId?: string | null, fallback = "Unassigned", fallbackUser?: User | null) => {
@@ -1228,7 +1316,8 @@ export default function ProjectBoard() {
         ) : statuses.length === 0 ? (
           <div className="flex-1 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground"><p>No statuses available.</p></div>
         ) : viewMode === "sprints" ? (
-          <div className="flex-1 overflow-auto space-y-6">
+          <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={(e) => {setActiveId(String(e.active.id)); setDragStartStatus(tasks.find(t => t.id === String(e.active.id))?.statusId || null); setLastOverStatus(null)}} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+            <div className="flex-1 overflow-auto space-y-6">
             <div className="flex justify-between items-center bg-card p-4 rounded-xl border">
               <div>
                 <h3 className="font-bold">Sprints</h3>
@@ -1285,22 +1374,17 @@ export default function ProjectBoard() {
                     </div>
                   </div>
                   <div className="p-2">
-                    {sprintTasks.length === 0 ? (
-                      <div className="text-center py-8 text-xs text-muted-foreground italic">No tasks in this sprint. Edit tasks to assign them here.</div>
-                    ) : (
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {sprintTasks.map(task => (
-                            <tr key={task.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => handleOpenTask(task)}>
-                              <td className="p-2 w-24 font-mono text-xs text-muted-foreground">{task.ticketId}</td>
-                              <td className="p-2 font-medium">{task.title}</td>
-                              <td className="p-2 w-32"><span className="text-[10px] font-bold uppercase" style={{ color: statuses.find(s => s.id === task.statusId)?.color || '#888' }}>{statuses.find(s => s.id === task.statusId)?.name}</span></td>
-                              <td className="p-2 w-16 text-center font-medium">{task.storyPoints}h</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                    <SprintDroppableArea id={`sprint-${sprint.id}`} isSprint>
+                      <SortableContext items={sprintTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                        {sprintTasks.length === 0 ? (
+                          <div className="text-center py-8 text-xs text-muted-foreground italic flex-1 flex items-center justify-center">No tasks in this sprint. Drag tasks here to assign them.</div>
+                        ) : (
+                          sprintTasks.map(task => (
+                            <SprintDraggableTask key={task.id} task={task} statuses={statuses} handleOpenTask={handleOpenTask} />
+                          ))
+                        )}
+                      </SortableContext>
+                    </SprintDroppableArea>
                   </div>
                 </div>
               );
@@ -1316,25 +1400,22 @@ export default function ProjectBoard() {
                 </p>
               </div>
               <div className="p-2">
-                {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).length === 0 ? (
-                  <div className="text-center py-8 text-xs text-muted-foreground italic">Backlog is empty.</div>
-                ) : (
-                  <table className="w-full text-sm">
-                    <tbody>
-                      {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).map(task => (
-                        <tr key={task.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => handleOpenTask(task)}>
-                          <td className="p-2 w-24 font-mono text-xs text-muted-foreground">{task.ticketId}</td>
-                          <td className="p-2 font-medium">{task.title}</td>
-                          <td className="p-2 w-32"><span className="text-[10px] font-bold uppercase" style={{ color: statuses.find(s => s.id === task.statusId)?.color || '#888' }}>{statuses.find(s => s.id === task.statusId)?.name}</span></td>
-                          <td className="p-2 w-16 text-center font-medium">{task.storyPoints}h</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                <SprintDroppableArea id="backlog">
+                  <SortableContext items={tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).map(t => t.id)} strategy={verticalListSortingStrategy}>
+                    {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).length === 0 ? (
+                      <div className="text-center py-8 text-xs text-muted-foreground italic flex-1 flex items-center justify-center">Backlog is empty. Drag tasks here to move them out of sprints.</div>
+                    ) : (
+                      tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).map(task => (
+                        <SprintDraggableTask key={task.id} task={task} statuses={statuses} handleOpenTask={handleOpenTask} />
+                      ))
+                    )}
+                  </SortableContext>
+                </SprintDroppableArea>
               </div>
             </div>
           </div>
+          <DragOverlay>{activeTask ? <div className="w-[500px] shadow-2xl opacity-80"><SprintDraggableTask task={activeTask} statuses={statuses} handleOpenTask={()=>{}} /></div> : null}</DragOverlay>
+          </DndContext>
         ) : viewMode === "kanban" ? (
           <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={(e) => {setActiveId(String(e.active.id)); setDragStartStatus(tasks.find(t => t.id === String(e.active.id))?.statusId || null); setLastOverStatus(null)}} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
             <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
