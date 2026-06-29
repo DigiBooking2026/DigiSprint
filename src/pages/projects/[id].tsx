@@ -15,6 +15,7 @@ import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, 
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { toast } from "sonner";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
+import { BurndownChart, type BurndownDataPoint } from "@/components/BurndownChart";
 import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project, Tag } from "@/generated/prisma";
 import {
   DndContext,
@@ -48,6 +49,8 @@ type ExtendedTask = Task & {
   sourceLinks?: { target: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
   targetLinks?: { source: { id: string, ticketId: string, title: string, status?: TaskStatus }, type: string }[],
   sprint?: { id: string, name: string } | null,
+  release?: { id: string, name: string } | null,
+  epic?: { id: string, ticketId: string, title: string } | null,
   worklogs?: { id: string; hours: number; notes: string | null; date: string; user: { name: string | null; email: string } }[],
   tags?: Tag[]
 };
@@ -58,6 +61,16 @@ export type Sprint = {
   goal: string | null;
   startDate: string | null;
   endDate: string | null;
+  status: string;
+  projectId: string;
+  tasks: { id: string; storyPoints: number; status: { name: string } }[];
+};
+
+export type Release = {
+  id: string;
+  name: string;
+  description: string | null;
+  releaseDate: string | null;
   status: string;
   projectId: string;
   tasks: { id: string; storyPoints: number; status: { name: string } }[];
@@ -345,13 +358,14 @@ export default function ProjectBoard() {
   const [tasks, setTasks] = useState<ExtendedTask[]>([]);
   const [statuses, setStatuses] = useState<TaskStatus[]>([]);
   const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [releases, setReleases] = useState<Release[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [project, setProject] = useState<ExtendedProject | null>(null);
   
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"kanban" | "list" | "sprints">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "list" | "sprints" | "releases" | "roadmap">("kanban");
   const [activeSprintFilter, setActiveSprintFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_desc");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -363,12 +377,17 @@ export default function ProjectBoard() {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editPoints, setEditPoints] = useState("");
-  const [editDesc, setEditDescription] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editType, setEditType] = useState("");
+  const [editCategory, setEditCategory] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
-  const [editPriority, setEditPriority] = useState("MEDIUM");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editPriority, setEditPriority] = useState("");
   const [editBlockedReason, setEditBlockedReason] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("");
-  const [editSprintId, setEditSprintId] = useState("");
+  const [editEpicId, setEditEpicId] = useState<string | null>(null);
+  const [editSprintId, setEditSprintId] = useState<string | null>(null);
+  const [editReleaseId, setEditReleaseId] = useState<string | null>(null);
   const [editTagIds, setEditTagIds] = useState<string[]>([]);
   
   // Chat state
@@ -380,6 +399,11 @@ export default function ProjectBoard() {
   // Worklog state
   const [worklogHours, setWorklogHours] = useState("");
   const [worklogNotes, setWorklogNotes] = useState("");
+
+  // Burndown state
+  const [showBurndownFor, setShowBurndownFor] = useState<string | null>(null);
+  const [burndownData, setBurndownData] = useState<BurndownDataPoint[] | null>(null);
+  const [isLoadingBurndown, setIsLoadingBurndown] = useState(false);
   const [worklogDate, setWorklogDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Confirmation Modal
@@ -492,19 +516,21 @@ export default function ProjectBoard() {
   const fetchData = useCallback(async () => {
     if (!projectId) return;
     try {
-      const [tasksRes, statusesRes, sprintsRes, usersRes, meRes, projectRes, tagsRes] = await Promise.all([
+      const [tasksRes, statusesRes, sprintsRes, usersRes, meRes, projectRes, tagsRes, releasesRes] = await Promise.all([
         fetch(`/api/tasks?projectId=${projectId}`),
         fetch(`/api/statuses?projectId=${projectId}`),
         fetch(`/api/projects/${projectId}/sprints`),
         fetch("/api/users"),
         fetch("/api/auth/me"),
         fetch(`/api/projects/${projectId}`),
-        fetch("/api/tags")
+        fetch("/api/tags"),
+        fetch(`/api/projects/${projectId}/releases`)
       ]);
       
       if (tasksRes.ok) setTasks(await tasksRes.json());
       if (statusesRes.ok) setStatuses(await statusesRes.json());
       if (sprintsRes.ok) setSprints(await sprintsRes.json());
+      if (releasesRes.ok) setReleases(await releasesRes.json());
       if (usersRes.ok) setUsers(await usersRes.json());
       if (meRes.ok) setCurrentUser(await meRes.json());
       if (projectRes.ok) setProject(await projectRes.json());
@@ -533,12 +559,17 @@ export default function ProjectBoard() {
       // Prep edit form
       setEditTitle(data.title);
       setEditPoints(String(data.storyPoints));
-      setEditDescription(data.description || "");
+      setEditDesc(data.description || "");
+      setEditType(data.type);
+      setEditCategory(data.category || "");
       setEditDeadline(data.deadline ? new Date(data.deadline).toISOString().split('T')[0] : "");
-      setEditPriority(data.priority || "MEDIUM");
+      setEditStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : "");
+      setEditPriority(data.priority);
       setEditBlockedReason(data.blockedReason || "");
-      setEditOwnerId(data.ownerId || "");
-      setEditSprintId(data.sprintId || "");
+      setEditOwnerId(data.ownerId);
+      setEditEpicId(data.epic?.id || null);
+      setEditSprintId(data.sprint?.id || "none");
+      setEditReleaseId(data.releaseId || "");
       setEditTagIds(data.tags?.map((t: Tag) => t.id) || []);
     }
   };
@@ -557,11 +588,16 @@ export default function ProjectBoard() {
         title: editTitle, 
         storyPoints: editPoints, 
         description: editDesc,
+        type: editType,
+        category: editCategory,
         deadline: editDeadline || null,
+        startDate: editType === "EPIC" ? (editStartDate || null) : undefined,
         priority: editPriority,
         blockedReason: editBlockedReason || null,
         ownerId: editOwnerId,
+        epicId: editType !== "EPIC" ? editEpicId : null,
         sprintId: editSprintId === "none" ? null : editSprintId || null,
+        releaseId: editReleaseId === "none" ? null : editReleaseId || null,
         attachmentIds: selectedTask.attachments?.map(a => a.id) || [],
         tagIds: editTagIds
       }),
@@ -628,10 +664,12 @@ export default function ProjectBoard() {
   // Creation logic ... (Keep existing form logic)
   const [openTaskForm, setOpenTaskForm] = useState(false);
   const [taskFormParentId, setTaskFormParentId] = useState<string | null>(null);
+  const [taskFormEpicId, setTaskFormEpicId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [storyPoints, setStoryPoints] = useState("");
   const [statusId, setStatusId] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [deadline, setDeadline] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [blockedReason, setBlockedReason] = useState("");
@@ -639,6 +677,7 @@ export default function ProjectBoard() {
   const [category, setCategory] = useState("General");
   const [assigneeId, setAssigneeId] = useState("unassigned");
   const [taskFormSprintId, setTaskFormSprintId] = useState<string | null>("none");
+  const [taskFormReleaseId, setTaskFormReleaseId] = useState<string | null>("none");
   const [taskFormTagIds, setTaskFormTagIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const categories = ["UI", "Backend", "Frontend", "DevOps", "Testing", "Documentation", "Database", "General"];
@@ -652,6 +691,11 @@ export default function ProjectBoard() {
   const [sprintGoal, setSprintGoal] = useState("");
   const [sprintStartDate, setSprintStartDate] = useState("");
   const [sprintEndDate, setSprintEndDate] = useState("");
+
+  const [openReleaseForm, setOpenReleaseForm] = useState(false);
+  const [releaseName, setReleaseName] = useState("");
+  const [releaseDescription, setReleaseDescription] = useState("");
+  const [releaseDate, setReleaseDate] = useState("");
 
   const handleCreateSprint = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -669,6 +713,23 @@ export default function ProjectBoard() {
       fetchData();
     }
   };
+
+  const handleCreateRelease = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch(`/api/projects/${projectId}/releases`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: releaseName, description: releaseDescription, releaseDate: releaseDate || null }),
+    });
+    if (res.ok) {
+      setOpenReleaseForm(false);
+      setReleaseName("");
+      setReleaseDescription("");
+      setReleaseDate("");
+      fetchData();
+    }
+  };
+
 
   const handleCreateStatus = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -698,11 +759,14 @@ export default function ProjectBoard() {
         type,
         category,
         priority,
-        blockedReason: blockedReason || null,
-        deadline: deadline || null,
+        deadline,
+        startDate: type === "EPIC" ? startDate : undefined,
         assigneeId: assigneeId === "unassigned" ? null : assigneeId,
         parentId: taskFormParentId,
+        epicId: type !== "EPIC" ? taskFormEpicId : null,
+        blockedReason: blockedReason || null,
         sprintId: taskFormSprintId === "none" ? null : taskFormSprintId,
+        releaseId: taskFormReleaseId === "none" ? null : taskFormReleaseId,
         attachmentIds: attachments.map(a => a.id),
         tagIds: taskFormTagIds
       }),
@@ -717,6 +781,7 @@ export default function ProjectBoard() {
       setPriority("MEDIUM");
       setBlockedReason("");
       setTaskFormSprintId("none");
+      setTaskFormReleaseId("none");
       setTaskFormTagIds([]);
       setAttachments([]);
       fetchData();
@@ -1031,6 +1096,8 @@ export default function ProjectBoard() {
               <Button variant={viewMode === "kanban" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("kanban")}>Kanban</Button>
               <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("list")}>List</Button>
               <Button variant={viewMode === "sprints" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("sprints")}>Sprints</Button>
+              <Button variant={viewMode === "releases" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("releases")}>Releases</Button>
+              <Button variant={viewMode === "roadmap" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("roadmap")}>Roadmap</Button>
             </div>
 
             <div className="flex gap-2">
@@ -1124,11 +1191,11 @@ export default function ProjectBoard() {
                 <DialogHeader><DialogTitle>Create Task {taskFormParentId ? "(Subtask)" : ""}</DialogTitle></DialogHeader>
                 <form onSubmit={handleCreateTask} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Type</Label><Select value={type} onValueChange={(val) => setType(val || "TASK")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="TASK">Task</SelectItem><SelectItem value="BUG">Bug</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-2"><Label>Type</Label><Select value={type} onValueChange={(val) => setType(val || "TASK")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="TASK">Task</SelectItem><SelectItem value="BUG">Bug</SelectItem><SelectItem value="EPIC">Epic</SelectItem></SelectContent></Select></div>
                     <div className="space-y-2"><Label>Category</Label><Select value={category} onValueChange={(val) => setCategory(val || "General")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
                   </div>
                   <div className="space-y-2"><Label>Title</Label><Input required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-                  <div className="space-y-2"><Label>Description</Label><RichTextEditor content={description} onChange={setDescription} /></div>
+                  <div className="space-y-2"><Label>Description</Label><RichTextEditor content={description} onChange={setDescription} users={users} /></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Points</Label><Input type="number" step="0.5" required value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} /></div>
                     <div className="space-y-2">
@@ -1143,11 +1210,30 @@ export default function ProjectBoard() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2"><Label>Priority</Label><Select value={priority} onValueChange={(val) => setPriority(val || "MEDIUM")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="LOW">Low</SelectItem><SelectItem value="MEDIUM">Medium</SelectItem><SelectItem value="HIGH">High</SelectItem><SelectItem value="CRITICAL">Critical</SelectItem></SelectContent></Select></div>
+                    {type === "EPIC" && (
+                      <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+                    )}
                     <div className="space-y-2"><Label>Deadline</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
+                    {type !== "EPIC" && (
+                      <div className="space-y-2">
+                        <Label>Epic</Label>
+                        <Select value={taskFormEpicId || "none"} onValueChange={(val) => setTaskFormEpicId(val === "none" ? null : val)}>
+                          <SelectTrigger>
+                            <span className="truncate">{taskFormEpicId === "none" || !taskFormEpicId ? "None" : (tasks.find(t => t.id === taskFormEpicId)?.title || taskFormEpicId)}</span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {tasks.filter(t => t.type === "EPIC").map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Parent Task</Label>
                       <Select value={taskFormParentId || "none"} onValueChange={(val) => setTaskFormParentId(val === "none" ? null : val)}>
@@ -1172,6 +1258,20 @@ export default function ProjectBoard() {
                           <SelectItem value="none">Backlog</SelectItem>
                           {sprints.map(s => (
                             <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Release</Label>
+                      <Select value={taskFormReleaseId || "none"} onValueChange={(val) => setTaskFormReleaseId(val === "none" ? null : val)}>
+                        <SelectTrigger>
+                          <span className="truncate">{taskFormReleaseId === "none" || !taskFormReleaseId ? "Unreleased" : (releases.find(r => r.id === taskFormReleaseId)?.name || taskFormReleaseId)}</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Unreleased</SelectItem>
+                          {releases.map(r => (
+                            <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1364,6 +1464,26 @@ export default function ProjectBoard() {
                         <span className="mx-2 text-muted-foreground">|</span>
                         <span className="font-bold">{sprintTasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0)}</span> hrs
                       </div>
+                      
+                      {sprint.status === "ACTIVE" && (
+                        <Button variant={showBurndownFor === sprint.id ? "secondary" : "ghost"} size="sm" onClick={async () => {
+                          if (showBurndownFor === sprint.id) {
+                            setShowBurndownFor(null);
+                          } else {
+                            setShowBurndownFor(sprint.id);
+                            setIsLoadingBurndown(true);
+                            try {
+                              const res = await fetch(`/api/projects/${projectId}/sprints/${sprint.id}/burndown`);
+                              if (res.ok) setBurndownData(await res.json());
+                              else setBurndownData(null);
+                            } catch(e) { setBurndownData(null); }
+                            setIsLoadingBurndown(false);
+                          }
+                        }}>
+                          <CircleDashed className="h-4 w-4 mr-2" /> Burndown
+                        </Button>
+                      )}
+
                       <Button variant="outline" size="sm" onClick={async () => {
                         const newStatus = sprint.status === "PLANNED" ? "ACTIVE" : sprint.status === "ACTIVE" ? "COMPLETED" : "PLANNED";
                         await fetch(`/api/sprints/${sprint.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
@@ -1373,6 +1493,18 @@ export default function ProjectBoard() {
                       </Button>
                     </div>
                   </div>
+                  {showBurndownFor === sprint.id && (
+                    <div className="p-6 border-b bg-card">
+                      <h4 className="font-bold mb-4">Sprint Burndown</h4>
+                      {isLoadingBurndown ? (
+                        <div className="h-[300px] flex items-center justify-center text-muted-foreground">Loading chart...</div>
+                      ) : burndownData ? (
+                        <BurndownChart data={burndownData} height={300} />
+                      ) : (
+                        <div className="h-[300px] flex items-center justify-center text-destructive">Failed to load burndown data. Does the sprint have a start and end date?</div>
+                      )}
+                    </div>
+                  )}
                   <div className="p-2">
                     <SprintDroppableArea id={`sprint-${sprint.id}`} isSprint>
                       <SortableContext items={sprintTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
@@ -1416,6 +1548,150 @@ export default function ProjectBoard() {
           </div>
           <DragOverlay>{activeTask ? <div className="w-[500px] shadow-2xl opacity-80"><SprintDraggableTask task={activeTask} statuses={statuses} handleOpenTask={()=>{}} /></div> : null}</DragOverlay>
           </DndContext>
+        ) : viewMode === "releases" ? (
+          <div className="flex-1 overflow-auto space-y-6">
+            <div className="flex justify-between items-center bg-card p-4 rounded-xl border">
+              <div>
+                <h3 className="font-bold">Releases / Fix Versions</h3>
+                <p className="text-xs text-muted-foreground mt-1">Manage product versions and deployments</p>
+              </div>
+              <Dialog open={openReleaseForm} onOpenChange={setOpenReleaseForm}>
+                <DialogTrigger render={<Button variant="outline" className="gap-2"><PlusCircle className="h-4 w-4" /> Create Release</Button>} />
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader><DialogTitle>Create Release</DialogTitle></DialogHeader>
+                  <form onSubmit={handleCreateRelease} className="space-y-4">
+                    <div className="space-y-2"><Label>Name</Label><Input required value={releaseName} onChange={(e) => setReleaseName(e.target.value)} placeholder="e.g. v1.0.0" /></div>
+                    <div className="space-y-2"><Label>Description</Label><Input value={releaseDescription} onChange={(e) => setReleaseDescription(e.target.value)} placeholder="What's in this release?" /></div>
+                    <div className="space-y-2"><Label>Release Date</Label><Input type="date" value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)} /></div>
+                    <Button type="submit" className="w-full">Create Release</Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+            
+            {releases.map(release => {
+              const releaseTasks = tasks.filter(t => t.releaseId === release.id);
+              const releaseDone = releaseTasks.filter(task => isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name)).length;
+              return (
+                <div key={release.id} className="border rounded-xl bg-card overflow-hidden">
+                  <div className="bg-muted/30 p-4 border-b flex justify-between items-center">
+                    <div>
+                      <h3 className="font-bold flex items-center gap-2">
+                        {release.name} 
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${release.status === 'RELEASED' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground'}`}>{release.status}</span>
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {release.releaseDate && `Date: ${new Date(release.releaseDate).toLocaleDateString()}`}
+                        {release.description && ` • ${release.description}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="text-right">
+                        <span className="font-bold">{releaseTasks.length}</span> issues
+                        <span className="mx-2 text-muted-foreground">|</span>
+                        <span className="font-bold">{releaseDone}</span> done
+                      </div>
+                      <Button variant="outline" size="sm" onClick={async () => {
+                        const newStatus = release.status === "UNRELEASED" ? "RELEASED" : "UNRELEASED";
+                        await fetch(`/api/releases/${release.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
+                        fetchData();
+                      }}>
+                        {release.status === "UNRELEASED" ? "Mark Released" : "Revert to Unreleased"}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="p-2 flex flex-col gap-2">
+                    {releaseTasks.length === 0 ? (
+                      <div className="text-center py-4 text-xs text-muted-foreground italic">No tasks in this release.</div>
+                    ) : (
+                      releaseTasks.map(task => (
+                        <div key={task.id} className="p-2 border rounded-md text-sm bg-background flex items-center justify-between cursor-pointer hover:border-primary" onClick={() => handleOpenTask(task)}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-muted-foreground">{task.ticketId}</span>
+                            <span className="font-medium">{task.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="bg-muted px-2 py-1 rounded">{statuses.find(s => s.id === task.statusId)?.name}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : viewMode === "roadmap" ? (
+          <div className="bg-background rounded-lg border shadow-sm flex flex-col overflow-hidden p-6 mt-4 min-h-[500px]">
+            <h2 className="text-xl font-bold mb-4">Project Roadmap</h2>
+            <div className="flex-1 overflow-auto border rounded relative">
+              <div className="min-w-[800px]">
+                {/* Timeline Header */}
+                <div className="flex border-b bg-muted/30 sticky top-0 z-10">
+                  <div className="w-1/3 p-4 font-semibold border-r bg-background">Epic</div>
+                  <div className="w-2/3 flex relative">
+                    {/* Render a 6 month timeline */}
+                    {[...Array(6)].map((_, i) => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() + i);
+                      return (
+                        <div key={i} className="flex-1 p-2 text-center text-sm font-semibold border-r last:border-r-0">
+                          {d.toLocaleString('default', { month: 'short', year: 'numeric' })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {/* Timeline Body */}
+                <div className="divide-y">
+                  {tasks.filter(t => t.type === "EPIC").map(epic => {
+                    const today = new Date();
+                    const epicStart = epic.startDate ? new Date(epic.startDate) : new Date();
+                    const epicEnd = epic.deadline ? new Date(epic.deadline) : new Date(new Date().setMonth(new Date().getMonth() + 1));
+                    
+                    const minDate = new Date();
+                    const maxDate = new Date();
+                    maxDate.setMonth(maxDate.getMonth() + 6);
+                    
+                    const totalDays = (maxDate.getTime() - minDate.getTime()) / (1000 * 3600 * 24);
+                    const startDiff = Math.max(0, (epicStart.getTime() - minDate.getTime()) / (1000 * 3600 * 24));
+                    const endDiff = Math.min(totalDays, (epicEnd.getTime() - minDate.getTime()) / (1000 * 3600 * 24));
+                    
+                    const leftPercent = Math.max(0, Math.min(100, (startDiff / totalDays) * 100));
+                    const widthPercent = Math.max(2, Math.min(100 - leftPercent, ((endDiff - startDiff) / totalDays) * 100));
+
+                    return (
+                      <div key={epic.id} className="flex hover:bg-muted/10 group">
+                        <div className="w-1/3 p-4 border-r bg-background shrink-0">
+                          <div className="font-medium hover:underline cursor-pointer" onClick={() => setSelectedTask(epic)}>
+                            {epic.ticketId}: {epic.title}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {tasks.filter(t => t.epic?.id === epic.id).length} issues
+                          </div>
+                        </div>
+                        <div className="w-2/3 relative py-4 bg-grid-pattern">
+                          <div 
+                            className="absolute h-8 bg-primary rounded-full top-1/2 -translate-y-1/2 flex items-center px-4 text-xs font-semibold text-primary-foreground shadow-md cursor-pointer hover:brightness-110 transition-all overflow-hidden whitespace-nowrap"
+                            style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
+                            onClick={() => setSelectedTask(epic)}
+                            title={`${epic.title} (${epicStart.toLocaleDateString()} - ${epicEnd.toLocaleDateString()})`}
+                          >
+                            {epic.title}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {tasks.filter(t => t.type === "EPIC").length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground">
+                      No epics found. Create an Epic to visualize it on the roadmap.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         ) : viewMode === "kanban" ? (
           <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={(e) => {setActiveId(String(e.active.id)); setDragStartStatus(tasks.find(t => t.id === String(e.active.id))?.statusId || null); setLastOverStatus(null)}} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
             <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
@@ -1527,15 +1803,34 @@ export default function ProjectBoard() {
               
               {isEditing ? (
                 <div className="space-y-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-primary uppercase">Task Title</Label>
-                    <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-xl font-bold h-12" />
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Type</Label>
+                      <Select value={editType} onValueChange={(val) => setEditType(val || "TASK")}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="TASK">Task</SelectItem>
+                          <SelectItem value="BUG">Bug</SelectItem>
+                          <SelectItem value="EPIC">Epic</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Task Title</Label>
+                      <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-xl font-bold h-12" />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Story Points (hrs)</Label>
                       <Input type="number" step="0.5" value={editPoints} onChange={(e) => setEditPoints(e.target.value)} />
                     </div>
+                    {editType === "EPIC" && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-primary uppercase">Start Date</Label>
+                        <Input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Deadline</Label>
                       <Input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} />
@@ -1563,7 +1858,23 @@ export default function ProjectBoard() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-3 gap-6">
+                    {editType !== "EPIC" && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-primary uppercase">Epic</Label>
+                        <Select value={editEpicId || "none"} onValueChange={(val) => setEditEpicId(val === "none" ? null : val)}>
+                          <SelectTrigger>
+                            <span className="truncate">{!editEpicId || editEpicId === "none" ? "None" : (tasks.find(t => t.id === editEpicId)?.title || editEpicId)}</span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {tasks.filter(t => t.type === "EPIC" && t.id !== selectedTask?.id).map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Parent Task</Label>
                       <Select 
@@ -1585,7 +1896,7 @@ export default function ProjectBoard() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
-                          {tasks.filter(t => t.id !== selectedTask?.id).map(t => (
+                          {tasks.filter(t => t.id !== selectedTask?.id && t.type !== "EPIC").map(t => (
                             <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
                           ))}
                         </SelectContent>
@@ -1593,13 +1904,25 @@ export default function ProjectBoard() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Sprint</Label>
-                      <Select value={editSprintId || "none"} onValueChange={(val) => setEditSprintId(val === "none" ? "" : (val || ""))}>
+                      <Select value={editSprintId || "none"} onValueChange={(val) => setEditSprintId(val === "none" ? null : (val || null))}>
                         <SelectTrigger>
                           <span className="truncate">{!editSprintId || editSprintId === "none" ? "Backlog" : (sprints.find(s => s.id === editSprintId)?.name || editSprintId)}</span>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Backlog</SelectItem>
                           {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary uppercase">Release</Label>
+                      <Select value={editReleaseId || "none"} onValueChange={(val) => setEditReleaseId(val === "none" ? null : (val || null))}>
+                        <SelectTrigger>
+                          <span className="truncate">{!editReleaseId || editReleaseId === "none" ? "Unreleased" : (releases.find(r => r.id === editReleaseId)?.name || editReleaseId)}</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Unreleased</SelectItem>
+                          {releases.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1665,7 +1988,7 @@ export default function ProjectBoard() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-primary uppercase">Description</Label>
-                    <RichTextEditor content={editDesc} onChange={setEditDescription} />
+                    <RichTextEditor content={editDesc} onChange={setEditDesc} users={users} />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-primary uppercase">Attachments</Label>
@@ -1684,7 +2007,7 @@ export default function ProjectBoard() {
                     <TabsList className="bg-muted/50 p-1 mb-6">
                       <TabsTrigger value="details" className="gap-2"><FileText className="h-4 w-4" /> Details</TabsTrigger>
                       <TabsTrigger value="worklogs" className="gap-2"><Clock className="h-4 w-4" /> Time Tracking</TabsTrigger>
-                      <TabsTrigger value="history" className="gap-2"><History className="h-4 w-4" /> History</TabsTrigger>
+                      <TabsTrigger value="activity" className="gap-2"><History className="h-4 w-4" /> Activity</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="details" className="space-y-8 animate-in fade-in duration-300">
@@ -1933,56 +2256,51 @@ export default function ProjectBoard() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="history" className="space-y-4 animate-in fade-in duration-300">
-                      {taskHistory.length > 0 ? (
-                        <div className="space-y-4 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-border">
-                          {taskHistory.map(h => (
-                            <div key={h.id} className="relative pl-12">
-                              <div className="absolute left-0 top-0.5 w-10 h-10 rounded-full bg-background border flex items-center justify-center shadow-sm z-10 text-primary">
-                                <Clock className="h-4 w-4" />
-                              </div>
-                              <div className="bg-muted/30 p-4 rounded-xl border">
-                                <p className="text-sm">
-                                  <span className="font-bold text-foreground">{h.user.name || h.user.email}</span>{" "}
-                                  {h.oldStatus === "Task edited" || h.oldStatus === "Edit" ? (
-                                    <>
-                                      edited the task: <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1 font-bold text-primary">{h.newStatus}</span>
-                                    </>
-                                  ) : h.oldStatus === "Owner changed" || h.oldStatus === "Assignee changed" ? (
-                                    <>
-                                      {h.oldStatus.toLowerCase()}: <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1 font-bold text-primary">{h.newStatus}</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      changed status from <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1">{h.oldStatus || "Created"}</span>
-                                      to <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs mx-1 font-bold text-primary">{h.newStatus}</span>
-                                    </>
-                                  )}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground mt-2">{new Date(h.createdAt).toLocaleString()}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : <div className="text-center py-12 text-muted-foreground italic">No status changes recorded yet.</div>}
-                    </TabsContent>
+                    {/* The history tab has been merged into the Activity Stream on the right */}
                   </Tabs>
                 </>
               )}
             </div>
 
-            {/* RIGHT: Chat & Conversation */}
+            {/* RIGHT: Activity Stream */}
             <div className="w-[440px] flex flex-col bg-muted/10 border-l">
               <div className="p-5 border-b bg-background/80 backdrop-blur-sm flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="bg-primary/10 p-1.5 rounded-lg"><Send className="h-4 w-4 text-primary" /></div>
-                  <h3 className="font-bold text-sm">Conversation</h3>
+                  <div className="bg-primary/10 p-1.5 rounded-lg"><History className="h-4 w-4 text-primary" /></div>
+                  <h3 className="font-bold text-sm">Activity Stream</h3>
                 </div>
-                <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{taskComments.length}</span>
               </div>
               
               <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-none">
-                {taskComments.map(comment => {
+                {[
+                  ...taskComments.map(c => ({ ...c, streamType: 'comment' as const, date: new Date(c.createdAt).getTime() })),
+                  ...taskHistory.map(h => ({ ...h, streamType: 'history' as const, date: new Date(h.createdAt).getTime() }))
+                ].sort((a: any, b: any) => a.date - b.date).map(item => {
+                  if (item.streamType === 'history') {
+                    const h = item as any;
+                    return (
+                      <div key={`hist-${h.id}`} className="relative pl-12 mb-4">
+                        <div className="absolute left-0 top-0.5 w-10 h-10 rounded-full bg-background border flex items-center justify-center shadow-sm z-10 text-muted-foreground">
+                          <History className="h-4 w-4" />
+                        </div>
+                        <div className="bg-muted/30 p-3 rounded-xl border">
+                          <p className="text-xs">
+                            <span className="font-bold text-foreground">{h.user.name || h.user.email}</span>{" "}
+                            {h.oldStatus === "Task edited" || h.oldStatus === "Edit" ? (
+                              <>edited the task: <span className="font-mono bg-background px-1 py-0.5 rounded text-[10px] mx-1 font-bold text-primary">{h.newStatus}</span></>
+                            ) : h.oldStatus === "Owner changed" || h.oldStatus === "Assignee changed" ? (
+                              <>{h.oldStatus.toLowerCase()}: <span className="font-mono bg-background px-1 py-0.5 rounded text-[10px] mx-1 font-bold text-primary">{h.newStatus}</span></>
+                            ) : (
+                              <>changed status from <span className="font-mono bg-background px-1 py-0.5 rounded text-[10px] mx-1">{h.oldStatus || "Created"}</span> to <span className="font-mono bg-background px-1 py-0.5 rounded text-[10px] mx-1 font-bold text-primary">{h.newStatus}</span></>
+                            )}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground mt-1">{new Date(h.createdAt).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  const comment = item as any;
                   const isMe = comment.userId === currentUser?.id;
                   return (
                     <div key={comment.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
@@ -1995,7 +2313,7 @@ export default function ProjectBoard() {
                         
                         {comment.attachments && comment.attachments.length > 0 && (
                           <div className="mt-3 space-y-2 border-t border-primary-foreground/10 pt-2">
-                            {comment.attachments.map(a => (
+                            {comment.attachments.map((a: any) => (
                               <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className={`block overflow-hidden rounded-lg text-[10px] ${isMe ? 'bg-white/10 hover:bg-white/20' : 'bg-muted/50 hover:bg-muted'}`}>
                                 {a.type.startsWith("image/") && (
                                   <img src={a.url} alt={a.name} className="max-h-44 w-full object-cover" />
@@ -2021,7 +2339,7 @@ export default function ProjectBoard() {
                   </div>
                 )}
                 <form onSubmit={handlePostComment} className="flex flex-col gap-2">
-                  <RichTextEditor minHeight="min-h-[80px]" content={commentText} onChange={setCommentText} />
+                  <RichTextEditor minHeight="min-h-[80px]" content={commentText} onChange={setCommentText} users={users} />
                   <div className="flex items-center justify-between">
                     <FileUpload onUploadComplete={(a) => setChatAttachments([...chatAttachments, a])}>
                       <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-primary gap-2"><Paperclip className="h-4 w-4" /> Add file</Button>

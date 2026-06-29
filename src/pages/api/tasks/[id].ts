@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, sprintId, loggedTime, attachmentIds, tagIds, deadline, parentId } = req.body;
+      const { title, description, storyPoints, type, category, priority, blockedReason, statusId, assigneeId, ownerId, sprintId, releaseId, epicId, loggedTime, attachmentIds, tagIds, startDate, deadline, parentId } = req.body;
 
       const existingTask = await prisma.task.findUnique({
         where: { id: taskId },
@@ -49,7 +49,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
       if (ownerId !== undefined) updateData.owner = { connect: { id: ownerId } };
       if (sprintId !== undefined) updateData.sprint = sprintId ? { connect: { id: sprintId } } : { disconnect: true };
+      if (releaseId !== undefined) updateData.release = releaseId ? { connect: { id: releaseId } } : { disconnect: true };
       if (loggedTime !== undefined) updateData.loggedTime = Number(existingTask.loggedTime) + Number(loggedTime);
+      if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
       if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null;
       if (attachmentIds !== undefined) {
         updateData.attachments = {
@@ -68,6 +70,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           updateData.parent = { connect: { id: parentId } };
         }
       }
+      if (epicId !== undefined) {
+        if (epicId === null || epicId === "") {
+          updateData.epic = { disconnect: true };
+        } else {
+          updateData.epic = { connect: { id: epicId } };
+        }
+      }
 
       const updatedTask = await prisma.task.update({
         where: { id: taskId },
@@ -77,6 +86,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           assignee: { select: { id: true, name: true, email: true } },
           owner: { select: { id: true, name: true, email: true } },
           sprint: { select: { id: true, name: true } },
+          release: { select: { id: true, name: true } },
+          epic: { select: { id: true, ticketId: true, title: true } },
           attachments: true,
           tags: true,
           history: {
@@ -146,6 +157,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (priority !== undefined && priority !== existingTask.priority) changedFields.push("priority");
       if (blockedReason !== undefined && blockedReason !== existingTask.blockedReason) changedFields.push("blocked reason");
       if (loggedTime !== undefined && Number(loggedTime) > 0) changedFields.push("logged time");
+      if (startDate !== undefined) {
+        const oldStartDate = existingTask.startDate ? existingTask.startDate.toISOString().split("T")[0] : "";
+        const newStartDate = startDate ? new Date(startDate).toISOString().split("T")[0] : "";
+        if (oldStartDate !== newStartDate) changedFields.push("start date");
+      }
       if (deadline !== undefined) {
         const oldDeadline = existingTask.deadline ? existingTask.deadline.toISOString().split("T")[0] : "";
         const newDeadline = deadline ? new Date(deadline).toISOString().split("T")[0] : "";
@@ -184,6 +200,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           assignee: { select: { id: true, name: true, email: true } },
           owner: { select: { id: true, name: true, email: true } },
           sprint: { select: { id: true, name: true } },
+          release: { select: { id: true, name: true } },
+          epic: { select: { id: true, ticketId: true, title: true } },
           attachments: true,
           tags: true,
           parent: { select: { id: true, ticketId: true, title: true, status: true } },

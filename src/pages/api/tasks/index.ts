@@ -23,7 +23,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           sourceLinks: { include: { target: { select: { id: true, ticketId: true, title: true, status: true } } } },
           targetLinks: { include: { source: { select: { id: true, ticketId: true, title: true, status: true } } } },
           project: { select: { id: true, name: true, prefix: true } },
-          tags: true
+          tags: true,
+          epic: { select: { id: true, ticketId: true, title: true } }
         },
         orderBy: { createdAt: "desc" }
       });
@@ -36,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { title, description, storyPoints, deadline, statusId, projectId, sprintId, assigneeId, attachmentIds, type, category, priority, blockedReason, parentId, tagIds } = req.body;
+      const { title, description, storyPoints, startDate, deadline, statusId, projectId, sprintId, assigneeId, attachmentIds, type, category, priority, blockedReason, parentId, epicId, tagIds } = req.body;
 
       const project = await prisma.project.findUnique({ where: { id: projectId } });
       if (!project) return res.status(404).json({ error: "Project not found" });
@@ -60,12 +61,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           priority: priority || "MEDIUM",
           blockedReason: blockedReason || null,
           storyPoints: Number(storyPoints) || 0,
+          startDate: startDate ? new Date(startDate) : null,
           deadline: deadline ? new Date(deadline) : null,
           statusId,
           projectId,
           sprintId: sprintId || null,
           assigneeId: assigneeId === "unassigned" ? null : assigneeId,
           parentId: parentId || null,
+          epicId: epicId || null,
           ownerId: session.userId,
           attachments: {
             connect: (attachmentIds || []).map((id: string) => ({ id }))

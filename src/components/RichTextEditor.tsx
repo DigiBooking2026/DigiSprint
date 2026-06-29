@@ -3,6 +3,8 @@ import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
 import Underline from '@tiptap/extension-underline'
+import Mention from '@tiptap/extension-mention'
+import { createSuggestion } from './suggestion'
 import { 
   Bold, Italic, Underline as UnderlineIcon, 
   List, ListOrdered, Image as ImageIcon, 
@@ -16,9 +18,10 @@ interface RichTextEditorProps {
   content: string
   onChange: (content: string) => void
   minHeight?: string
+  users?: {id: string, name: string | null, email: string}[]
 }
 
-export function RichTextEditor({ content, onChange, minHeight = "min-h-[150px]" }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, minHeight = "min-h-[150px]", users = [] }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -28,6 +31,12 @@ export function RichTextEditor({ content, onChange, minHeight = "min-h-[150px]" 
       }),
       Image.configure({
         allowBase64: true,
+      }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention bg-primary/20 text-primary px-1 rounded-sm font-medium',
+        },
+        suggestion: createSuggestion(users),
       }),
     ],
     content: content,

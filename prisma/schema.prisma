@@ -46,6 +46,7 @@ model Project {
   owner       User?        @relation("project_owner", fields: [ownerId], references: [id])
   isPrivate   Boolean      @default(false)
   members     User[]       @relation("project_members")
+  releases    Release[]
   
   @@map("project")
 }
@@ -68,6 +69,23 @@ model Sprint {
   @@map("sprint")
 }
 
+model Release {
+  id          String       @id @default(cuid())
+  name        String
+  description String?      @db.LongText
+  releaseDate DateTime?
+  status      String       @default("UNRELEASED") // UNRELEASED, RELEASED, ARCHIVED
+  projectId   String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@index([projectId])
+  @@map("release")
+}
+
 model Task {
   id          String        @id @default(cuid())
   ticketId    String        @unique(map: "Task_ticketId_key")
@@ -79,13 +97,16 @@ model Task {
   blockedReason String?     @db.LongText
   storyPoints Float         @default(0)
   loggedTime  Float         @default(0)
+  startDate   DateTime?
   deadline    DateTime?
   statusId    String
   projectId   String
   sprintId    String?
+  releaseId   String?
   ownerId     String
   assigneeId  String?
   parentId    String?
+  epicId      String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   
@@ -94,6 +115,7 @@ model Task {
   owner       User          @relation("task_owner", fields: [ownerId], references: [id], map: "Task_ownerId_fkey")
   project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade, map: "Task_projectId_fkey")
   sprint      Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  release     Release?      @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   status      TaskStatus    @relation(fields: [statusId], references: [id], map: "Task_statusId_fkey")
   history     TaskHistory[]
   comments    Comment[]
@@ -102,6 +124,8 @@ model Task {
   
   parent      Task?         @relation("TaskToSubtasks", fields: [parentId], references: [id], onDelete: Cascade, map: "Task_parentId_fkey")
   subtasks    Task[]        @relation("TaskToSubtasks")
+  epic        Task?         @relation("EpicTasks", fields: [epicId], references: [id], onDelete: SetNull)
+  epicTasks   Task[]        @relation("EpicTasks")
   sourceLinks TaskLink[]    @relation("TaskLinkSource")
   targetLinks TaskLink[]    @relation("TaskLinkTarget")
 
@@ -109,8 +133,10 @@ model Task {
   @@index([ownerId], map: "Task_ownerId_fkey")
   @@index([projectId], map: "Task_projectId_fkey")
   @@index([sprintId])
+  @@index([releaseId])
   @@index([statusId], map: "Task_statusId_fkey")
   @@index([parentId], map: "Task_parentId_fkey")
+  @@index([epicId])
   @@map("task")
 }
 

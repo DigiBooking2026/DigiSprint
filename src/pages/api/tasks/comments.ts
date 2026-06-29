@@ -54,22 +54,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (task.assigneeId && task.assigneeId !== session.userId) usersToNotify.add(task.assigneeId);
         if (task.ownerId && task.ownerId !== session.userId) usersToNotify.add(task.ownerId);
 
-        // Detect mentions like @user@example.com or @name
-        const mentionRegex = /@([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+|[a-zA-Z0-9]+)/g;
+        // Detect tiptap mentions: <span data-type="mention" data-id="user-id">
+        const mentionRegex = /data-type="mention"\s+data-id="([^"]+)"/g;
         const mentions = Array.from(String(content || "").matchAll(mentionRegex)).map(m => m[1]);
 
         if (mentions.length > 0) {
           const mentionedUsers = await prisma.user.findMany({
-            where: {
-              OR: [
-                { email: { in: mentions } },
-                { name: { in: mentions } }
-              ]
-            },
-            select: { id: true }
+            where: { id: { in: mentions } },
+            select: { id: true, name: true, email: true }
           });
           for (const u of mentionedUsers) {
-            if (u.id !== session.userId) usersToNotify.add(u.id);
+            if (u.id !== session.userId) {
+              usersToNotify.add(u.id);
+            }
           }
         }
 

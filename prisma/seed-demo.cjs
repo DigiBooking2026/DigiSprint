@@ -24,7 +24,7 @@ loadEnv();
 const { PrismaClient } = require("../src/generated/prisma");
 const prisma = new PrismaClient();
 
-const demoPrefixes = ["DEMO-WEB", "DEMO-API", "DEMO-MOB", "DEMO-QA"];
+const demoPrefixes = ["DB", "ZT", "YN", "ZSN", "ZC"];
 
 const defaultStatuses = [
   { name: "Backlog", color: "#64748b", order: 1 },
@@ -67,9 +67,9 @@ async function ensureUsers() {
 
 const templates = [
   {
-    name: "Demo - In Progress",
-    prefix: "DEMO-WEB",
-    description: "<p>Demo project currently in progress, with active work and review tasks.</p>",
+    name: "DigiBooking",
+    prefix: "DB",
+    description: "<p>A comprehensive platform for booking appointments and managing schedules.</p>",
     startDate: dateFromToday(-12),
     deadline: dateFromToday(18),
     tasks: [
@@ -80,43 +80,56 @@ const templates = [
     ],
   },
   {
-    name: "Demo - Past Deadline",
-    prefix: "DEMO-API",
-    description: "<p>Demo project past its deadline with overdue backend and testing tasks.</p>",
+    name: "ZTrip",
+    prefix: "ZT",
+    description: "<p>A ride-sharing and travel itinerary management system.</p>",
     startDate: dateFromToday(-25),
     deadline: dateFromToday(-2),
     tasks: [
-      { title: "Fix invoice sync retry bug", status: "In Progress", points: 8, due: -4, assignee: 2, type: "BUG", category: "Backend", priority: "CRITICAL" },
-      { title: "Add task history audit coverage", status: "Testing", points: 5, due: -1, assignee: 3, category: "Testing", priority: "HIGH" },
-      { title: "Document webhook payload contract", status: "Done", points: 2, due: -8, assignee: 2, category: "Documentation" },
-      { title: "Harden file upload validation", status: "Backlog", points: 4, due: 6, assignee: 2, category: "Backend" },
+      { title: "Fix driver location sync retry bug", status: "In Progress", points: 8, due: -4, assignee: 2, type: "BUG", category: "Backend", priority: "CRITICAL" },
+      { title: "Add trip history audit coverage", status: "Testing", points: 5, due: -1, assignee: 3, category: "Testing", priority: "HIGH" },
+      { title: "Document GPS tracking payload contract", status: "Done", points: 2, due: -8, assignee: 2, category: "Documentation" },
+      { title: "Harden driver photo upload validation", status: "Backlog", points: 4, due: 6, assignee: 2, category: "Backend" },
     ],
   },
   {
-    name: "Demo - Not Started",
-    prefix: "DEMO-MOB",
-    description: "<p>Demo project that has not started yet, with upcoming work in backlog and to do.</p>",
+    name: "YallaNamrah",
+    prefix: "YN",
+    description: "<p>An e-commerce platform for localized goods and services.</p>",
     startDate: dateFromToday(3),
     deadline: dateFromToday(28),
     tasks: [
-      { title: "Set up mobile project shell", status: "Backlog", points: 5, due: 8, assignee: 1, category: "Frontend" },
-      { title: "Define notification settings UI", status: "To Do", points: 3, due: 12, assignee: 1, category: "UI" },
-      { title: "Plan offline task cache", status: "To Do", points: 6, due: 16, assignee: 2, category: "Database" },
+      { title: "Set up mobile shopping cart shell", status: "Backlog", points: 5, due: 8, assignee: 1, category: "Frontend" },
+      { title: "Define push notification settings UI", status: "To Do", points: 3, due: 12, assignee: 1, category: "UI" },
+      { title: "Plan offline catalog cache", status: "To Do", points: 6, due: 16, assignee: 2, category: "Database" },
     ],
   },
   {
-    name: "Demo - Done",
-    prefix: "DEMO-QA",
-    description: "<p>Demo project where all tasks are complete, so the project is done.</p>",
+    name: "ZSocial(Nexus)",
+    prefix: "ZSN",
+    description: "<p>A next-generation social networking application connecting professionals.</p>",
     startDate: dateFromToday(-20),
     deadline: dateFromToday(-3),
     tasks: [
-      { title: "Run checkout regression suite", status: "Done", points: 4, due: -10, assignee: 3, category: "Testing" },
-      { title: "Verify payment error states", status: "Done", points: 3, due: -8, assignee: 3, type: "BUG", category: "Testing", priority: "HIGH" },
-      { title: "Approve release checklist", status: "Done", points: 2, due: -6, assignee: 0, category: "Documentation" },
-      { title: "Smoke test production build", status: "Done", points: 2, due: -4, assignee: 3, category: "DevOps" },
+      { title: "Run feed algorithm regression suite", status: "Done", points: 4, due: -10, assignee: 3, category: "Testing" },
+      { title: "Verify connection request error states", status: "Done", points: 3, due: -8, assignee: 3, type: "BUG", category: "Testing", priority: "HIGH" },
+      { title: "Approve v2.0 release checklist", status: "Done", points: 2, due: -6, assignee: 0, category: "Documentation" },
+      { title: "Smoke test chat production build", status: "Done", points: 2, due: -4, assignee: 3, category: "DevOps" },
     ],
   },
+  {
+    name: "ZCars",
+    prefix: "ZC",
+    description: "<p>A car rental and marketplace application.</p>",
+    startDate: dateFromToday(-5),
+    deadline: dateFromToday(45),
+    tasks: [
+      { title: "Design car listing details page", status: "In Progress", points: 8, due: 5, assignee: 1, category: "Frontend", priority: "HIGH" },
+      { title: "Implement Stripe payment gateway", status: "To Do", points: 13, due: 15, assignee: 2, category: "Backend", priority: "CRITICAL" },
+      { title: "Create rental agreement PDF generator", status: "Backlog", points: 5, due: 20, assignee: 2, category: "Backend" },
+      { title: "Test vehicle search filters", status: "Backlog", points: 3, due: 25, assignee: 3, category: "Testing" },
+    ],
+  }
 ];
 
 async function main() {
