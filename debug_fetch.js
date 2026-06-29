@@ -1,0 +1,1 @@
+fetch('http://127.0.0.1:3001/api/projects/cmqzif8qp001kjnnwm633bjle/bulk-import', { method: 'POST', headers: { 'x-api-key': 'vBqUs2lfI5fMcaMXRbvsonmfxELwtPel', 'Content-Type': 'application/json' }, body: JSON.stringify({tasks:[{title:'Test', storyPoints: 2}]}) }).then(async r => console.log(r.status, await r.text()))  

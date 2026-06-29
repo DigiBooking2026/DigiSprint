@@ -35,7 +35,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!user) return res.status(401).json({ error: "Unauthorized. Could not determine operating user." });
 
-  const payload = req.body;
   if (!payload || typeof payload !== 'object') {
     return res.status(400).json({ error: "Invalid JSON payload" });
   }
