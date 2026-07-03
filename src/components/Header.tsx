@@ -22,7 +22,7 @@ export function Header() {
 
   useEffect(() => {
     fetch("/api/notifications")
-      .then((res) => res.json())
+      .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (Array.isArray(data)) {
           setNotifications(data);
