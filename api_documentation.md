@@ -2,11 +2,14 @@
 
 This document covers the utility endpoints created to facilitate initial database configuration, bulk seeding, and complete CRUD management of Projects and Tasks without session authentication.
 
+**Base Server URL**: `http://37.59.205.27`
+
 ---
 
 ## 1. Bulk User Registration API
 
-**`POST /api/admin/create-users`**
+### Request URL
+* **`POST http://37.59.205.27/api/admin/create-users`**
 
 Registers multiple users at once and returns their database IDs.
 
@@ -57,7 +60,8 @@ Registers multiple users at once and returns their database IDs.
 
 ## 2. Bulk Import API
 
-**`POST /api/admin/bulk-import`**
+### Request URL
+* **`POST http://37.59.205.27/api/admin/bulk-import`**
 
 Allows importing Epics, Sprints, and Tasks into a specific project. Matches assignees using `assigneeId`, `assigneeEmail`, or `assigneeName`.
 
@@ -118,8 +122,10 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 
 ## 3. Project CRUD APIs
 
+These endpoints manage Projects.
+
 ### List All Projects
-* **`GET /api/admin/projects`**
+* **Request URL**: **`GET http://37.59.205.27/api/admin/projects`**
 
 #### Response Example (200 OK)
 ```json
@@ -149,7 +155,7 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 ```
 
 ### Create a Project
-* **`POST /api/admin/projects`**
+* **Request URL**: **`POST http://37.59.205.27/api/admin/projects`**
 
 #### Request Payload Example
 ```json
@@ -188,7 +194,7 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 ```
 
 ### Get Project Details
-* **`GET /api/admin/projects/[id]`**
+* **Request URL**: **`GET http://37.59.205.27/api/admin/projects/[id]`**
 
 #### Response Example (200 OK)
 ```json
@@ -222,7 +228,7 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 ```
 
 ### Update a Project
-* **`PATCH /api/admin/projects/[id]`**
+* **Request URL**: **`PATCH http://37.59.205.27/api/admin/projects/[id]`** (or `PUT`)
 
 #### Request Payload Example
 ```json
@@ -252,7 +258,7 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 ```
 
 ### Delete a Project
-* **`DELETE /api/admin/projects/[id]`**
+* **Request URL**: **`DELETE http://37.59.205.27/api/admin/projects/[id]`**
 
 #### Response Example (200 OK)
 ```json
@@ -265,8 +271,10 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 
 ## 4. Task CRUD APIs
 
+These endpoints manage Tasks.
+
 ### List Tasks
-* **`GET /api/admin/tasks`** or **`GET /api/admin/tasks?projectId=cmqzif8py000ujnnwr4myoilk`**
+* **Request URL**: **`GET http://37.59.205.27/api/admin/tasks`** or **`GET http://37.59.205.27/api/admin/tasks?projectId=cmqzif8py000ujnnwr4myoilk`**
 
 #### Response Example (200 OK)
 ```json
@@ -290,7 +298,7 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 ```
 
 ### Create a Task
-* **`POST /api/admin/tasks`**
+* **Request URL**: **`POST http://37.59.205.27/api/admin/tasks`**
 
 #### Request Payload Example
 ```json
@@ -334,7 +342,7 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 ```
 
 ### Get Task Details
-* **`GET /api/admin/tasks/[id]`**
+* **Request URL**: **`GET http://37.59.205.27/api/admin/tasks/[id]`**
 
 #### Response Example (200 OK)
 ```json
@@ -352,7 +360,7 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 ```
 
 ### Update a Task
-* **`PATCH /api/admin/tasks/[id]`**
+* **Request URL**: **`PATCH http://37.59.205.27/api/admin/tasks/[id]`** (or `PUT`)
 
 #### Request Payload Example
 ```json
@@ -374,7 +382,7 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
 ```
 
 ### Delete a Task
-* **`DELETE /api/admin/tasks/[id]`**
+* **Request URL**: **`DELETE http://37.59.205.27/api/admin/tasks/[id]`**
 
 #### Response Example (200 OK)
 ```json
