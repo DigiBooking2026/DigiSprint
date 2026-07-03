@@ -21,13 +21,13 @@ Registers multiple users at once and returns their database IDs.
       "email": "dev1@digisprint.local",
       "password": "securepassword123",
       "name": "Lead Developer",
-      "role": "ADMIN"
+      "role": "ADMIN" // Allowed roles: "USER", "ADMIN" (default: "USER")
     },
     {
       "email": "dev2@digisprint.local",
       "password": "securepassword456",
       "name": "Frontend Engineer",
-      "role": "USER"
+      "role": "USER" // Allowed roles: "USER", "ADMIN" (default: "USER")
     }
   ]
 }
@@ -79,14 +79,14 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
     {
       "name": "Sprint 1: Core Setup",
       "goal": "Integrate basic modules",
-      "status": "ACTIVE",
+      "status": "ACTIVE", // Allowed sprint statuses: "PLANNED", "ACTIVE", "COMPLETED" (default: "PLANNED")
       "tasks": [
         {
           "title": "Configure OAuth login",
-          "type": "USER_STORY",
+          "type": "USER_STORY", // Allowed task types: "TASK", "BUG", "USER_STORY", "EPIC" (default: "TASK")
           "storyPoints": 5,
           "status": "In Progress",
-          "priority": "HIGH",
+          "priority": "HIGH", // Allowed priorities: "LOW", "MEDIUM", "HIGH", "CRITICAL" (default: "MEDIUM")
           "epicTitle": "SSO Auth",
           "assigneeId": "cmqy12345abcde"
         }
@@ -96,10 +96,10 @@ Allows importing Epics, Sprints, and Tasks into a specific project. Matches assi
   "tasks": [
     {
       "title": "Fix SSO alignment button",
-      "type": "BUG",
+      "type": "BUG", // Allowed task types: "TASK", "BUG", "USER_STORY", "EPIC" (default: "TASK")
       "storyPoints": 1,
       "status": "Backlog",
-      "priority": "LOW"
+      "priority": "LOW" // Allowed priorities: "LOW", "MEDIUM", "HIGH", "CRITICAL" (default: "MEDIUM")
     }
   ]
 }
@@ -307,8 +307,8 @@ These endpoints manage Tasks.
   "statusId": "s-1",
   "title": "Create User Profiles",
   "description": "Enable user settings changes",
-  "type": "USER_STORY",
-  "priority": "HIGH",
+  "type": "USER_STORY", // Allowed types: "TASK", "BUG", "USER_STORY", "EPIC" (default: "TASK")
+  "priority": "HIGH", // Allowed priorities: "LOW", "MEDIUM", "HIGH", "CRITICAL" (default: "MEDIUM")
   "storyPoints": 8,
   "assigneeId": "cmqy67890fghij",
   "ownerId": "cmqy12345abcde"
