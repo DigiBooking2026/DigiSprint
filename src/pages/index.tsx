@@ -97,13 +97,24 @@ export default function Dashboard() {
       fetch("/api/tasks"),
       fetch("/api/activity")
     ]);
-    if (projRes.ok) setProjects(await projRes.json());
-    if (tasksRes.ok) setAllTasks(await tasksRes.json());
-    if (activityRes.ok) {
-      const data = await activityRes.json();
-      setRecentActivity(data.slice(0, 5));
+    try {
+      if (projRes.ok) {
+        const data = await projRes.json();
+        if (Array.isArray(data)) setProjects(data);
+      }
+      if (tasksRes.ok) {
+        const data = await tasksRes.json();
+        if (Array.isArray(data)) setAllTasks(data);
+      }
+      if (activityRes.ok) {
+        const data = await activityRes.json();
+        if (Array.isArray(data)) setRecentActivity(data.slice(0, 5));
+      }
+    } catch (err) {
+      console.error("Error parsing fetchData JSON:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const resetProjectForm = () => {
