@@ -5,7 +5,7 @@ import { getSessionFromRequest } from '@/lib/auth'
 export default async function proxy(request: NextRequest) {
   const publicPaths = ['/login', '/register', '/logo.png', '/api/auth/login', '/api/auth/register', '/api/auth/logout', '/api/admin/bulk-import', '/api/admin/create-users', '/api/admin/projects', '/api/admin/tasks']
   
-  const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))
+  const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path)) || request.nextUrl.pathname.startsWith('/api/admin')
 
   const session = await getSessionFromRequest(request)
 
