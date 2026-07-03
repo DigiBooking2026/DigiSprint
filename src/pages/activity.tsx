@@ -24,7 +24,7 @@ export default function ActivityStreamPage() {
 
   useEffect(() => {
     fetch("/api/activity")
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (Array.isArray(data)) {
           setActivities(data);
