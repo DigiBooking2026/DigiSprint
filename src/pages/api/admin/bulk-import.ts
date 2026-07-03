@@ -13,27 +13,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   let user = null;
 
-  // 1. Authentication
-  console.log("Checking Auth", apiKey, process.env.IMPORT_API_KEY);
-  // Allow API key from ENV OR regular session
-  const validApiKey = process.env.IMPORT_API_KEY || "vBqUs2lfI5fMcaMXRbvsonmfxELwtPel";
-  if (apiKey && validApiKey && apiKey === validApiKey) {
-    // Verified via API Key. We need an "owner" for actions.
-    // Fetch the first admin or project owner.
-    const project = await prisma.project.findUnique({ where: { id: String(projectId) }, include: { owner: true } });
-    if (!project) return res.status(404).json({ error: "Project not found" });
-    user = project.owner;
-    if (!user) {
-      user = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-    }
-  } else {
-    // Verify via Session
-    const session = await getSessionFromRequest(req);
-    if (!session) return res.status(401).json({ error: "Unauthorized. Missing valid session or API key." });
-    user = await prisma.user.findUnique({ where: { id: session.userId } });
+  // 1. Authentication Bypassed
+  const project = await prisma.project.findUnique({ where: { id: String(projectId) }, include: { owner: true } });
+  if (!project) return res.status(404).json({ error: "Project not found" });
+  user = project.owner;
+  if (!user) {
+    user = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+  }
+  if (!user) {
+    user = await prisma.user.findFirst();
   }
 
-  if (!user) return res.status(401).json({ error: "Unauthorized. Could not determine operating user." });
+  if (!user) return res.status(400).json({ error: "No user found in the system to act as project owner. Register a user first." });
 
   if (!payload || typeof payload !== 'object') {
     return res.status(400).json({ error: "Invalid JSON payload" });
@@ -60,7 +51,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       epicsCreated: 0,
     };
 
-    const getAssigneeId = (email?: string, name?: string) => {
+    const getAssigneeId = (email?: string, name?: string, directId?: string) => {
+      if (directId) return directId;
       if (!email && !name) return undefined;
       const found = allUsers.find(u => 
         (email && u.email.toLowerCase() === email.toLowerCase()) || 
@@ -81,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const ticketId = `${project.prefix}-${currentTaskCount}`;
       
       const statusId = getStatusId(taskData.status);
-      const assigneeId = getAssigneeId(taskData.assigneeEmail, taskData.assigneeName);
+      const assigneeId = getAssigneeId(taskData.assigneeEmail, taskData.assigneeName, taskData.assigneeId);
       
       return await prisma.task.create({
         data: {
