@@ -1,6 +1,6 @@
 # DigiSprint Administrative CRUD & Initialization APIs
 
-This document covers the utility endpoints created to facilitate initial database configuration, bulk seeding, and complete CRUD management of Projects and Tasks without session authentication.
+This document covers the utility endpoints created to facilitate initial database configuration, bulk seeding, and complete CRUD management of Projects, Task Statuses, Categories (Tags), and Tasks without session authentication.
 
 **Base Server URL**: `http://37.59.205.27`
 
@@ -33,29 +33,6 @@ Registers multiple users at once and returns their database IDs.
 }
 ```
 
-### Response Example (200 OK)
-```json
-{
-  "success": true,
-  "users": [
-    {
-      "id": "cmqy12345abcde",
-      "email": "dev1@digisprint.local",
-      "name": "Lead Developer",
-      "role": "ADMIN",
-      "status": "created"
-    },
-    {
-      "id": "cmqy67890fghij",
-      "email": "dev2@digisprint.local",
-      "name": "Frontend Engineer",
-      "role": "USER",
-      "status": "created"
-    }
-  ]
-}
-```
-
 ---
 
 ## 2. Bulk Import API
@@ -65,328 +42,133 @@ Registers multiple users at once and returns their database IDs.
 
 Allows importing Epics, Sprints, and Tasks into a specific project. Matches assignees using `assigneeId`, `assigneeEmail`, or `assigneeName`.
 
-### Request Payload Example
-```json
-{
-  "projectId": "cmqzif8qp001kjnnwm633bjle",
-  "epics": [
-    {
-      "title": "SSO Auth",
-      "description": "Enterprise Single Sign-On flow."
-    }
-  ],
-  "sprints": [
-    {
-      "name": "Sprint 1: Core Setup",
-      "goal": "Integrate basic modules",
-      "status": "ACTIVE", // Allowed sprint statuses: "PLANNED", "ACTIVE", "COMPLETED" (default: "PLANNED")
-      "tasks": [
-        {
-          "title": "Configure OAuth login",
-          "type": "USER_STORY", // Allowed task types: "TASK", "BUG", "USER_STORY", "EPIC" (default: "TASK")
-          "storyPoints": 5,
-          "status": "In Progress",
-          "priority": "HIGH", // Allowed priorities: "LOW", "MEDIUM", "HIGH", "CRITICAL" (default: "MEDIUM")
-          "epicTitle": "SSO Auth",
-          "assigneeId": "cmqy12345abcde"
-        }
-      ]
-    }
-  ],
-  "tasks": [
-    {
-      "title": "Fix SSO alignment button",
-      "type": "BUG", // Allowed task types: "TASK", "BUG", "USER_STORY", "EPIC" (default: "TASK")
-      "storyPoints": 1,
-      "status": "Backlog",
-      "priority": "LOW" // Allowed priorities: "LOW", "MEDIUM", "HIGH", "CRITICAL" (default: "MEDIUM")
-    }
-  ]
-}
-```
-
-### Response Example (200 OK)
-```json
-{
-  "success": true,
-  "message": "Bulk import successful",
-  "results": {
-    "sprintsCreated": 1,
-    "tasksCreated": 2,
-    "epicsCreated": 1
-  }
-}
-```
-
 ---
 
 ## 3. Project CRUD APIs
 
-These endpoints manage Projects.
-
 ### List All Projects
 * **Request URL**: **`GET http://37.59.205.27/api/admin/projects`**
-
-#### Response Example (200 OK)
-```json
-[
-  {
-    "id": "cmqzif8qp001kjnnwm633bjle",
-    "name": "YallaNamrah",
-    "description": "YallaNamrah project desc",
-    "prefix": "YN",
-    "startDate": "2026-06-29T19:03:35.000Z",
-    "deadline": "2026-07-29T19:03:35.000Z",
-    "ownerId": "cmqy12345abcde",
-    "isPrivate": false,
-    "createdAt": "2026-06-29T19:03:35.000Z",
-    "updatedAt": "2026-06-29T19:03:35.000Z",
-    "deletedAt": null,
-    "statuses": [
-      { "id": "status-1", "name": "Backlog", "color": "#64748b", "order": 1 },
-      { "id": "status-2", "name": "To Do", "color": "#3b82f6", "order": 2 },
-      { "id": "status-3", "name": "Done", "color": "#22c55e", "order": 7 }
-    ],
-    "_count": {
-      "tasks": 20
-    }
-  }
-]
-```
 
 ### Create a Project
 * **Request URL**: **`POST http://37.59.205.27/api/admin/projects`**
 
-#### Request Payload Example
-```json
-{
-  "name": "ZTrip Taxi App",
-  "prefix": "ZT",
-  "description": "Ride sharing application",
-  "startDate": "2026-07-01",
-  "deadline": "2026-12-31",
-  "ownerId": "cmqy12345abcde",
-  "isPrivate": false
-}
-```
-
-#### Response Example (200 OK)
-```json
-{
-  "id": "cmqzif8py000ujnnwr4myoilk",
-  "name": "ZTrip Taxi App",
-  "description": "Ride sharing application",
-  "prefix": "ZT",
-  "startDate": "2026-07-01T00:00:00.000Z",
-  "deadline": "2026-12-31T00:00:00.000Z",
-  "ownerId": "cmqy12345abcde",
-  "isPrivate": false,
-  "createdAt": "2026-07-03T19:20:00.000Z",
-  "updatedAt": "2026-07-03T19:20:00.000Z",
-  "deletedAt": null,
-  "statuses": [
-    { "id": "s-1", "name": "Backlog", "color": "#64748b", "order": 1 },
-    { "id": "s-2", "name": "To Do", "color": "#3b82f6", "order": 2 },
-    { "id": "s-3", "name": "In Progress", "color": "#f59e0b", "order": 3 },
-    { "id": "s-4", "name": "Done", "color": "#22c55e", "order": 7 }
-  ]
-}
-```
-
 ### Get Project Details
 * **Request URL**: **`GET http://37.59.205.27/api/admin/projects/[id]`**
-
-#### Response Example (200 OK)
-```json
-{
-  "id": "cmqzif8py000ujnnwr4myoilk",
-  "name": "ZTrip Taxi App",
-  "description": "Ride sharing application",
-  "prefix": "ZT",
-  "startDate": "2026-07-01T00:00:00.000Z",
-  "deadline": "2026-12-31T00:00:00.000Z",
-  "ownerId": "cmqy12345abcde",
-  "isPrivate": false,
-  "deletedAt": null,
-  "statuses": [
-    { "id": "s-1", "name": "Backlog", "color": "#64748b", "order": 1 },
-    { "id": "s-2", "name": "To Do", "color": "#3b82f6", "order": 2 }
-  ],
-  "members": [
-    { "id": "cmqy12345abcde", "name": "Lead Developer", "email": "dev1@digisprint.local" }
-  ],
-  "tasks": [
-    {
-      "id": "task-uuid-999",
-      "ticketId": "ZT-1",
-      "title": "Setup repository structure",
-      "status": { "id": "s-1", "name": "Backlog", "color": "#64748b", "order": 1 },
-      "assignee": null
-    }
-  ]
-}
-```
 
 ### Update a Project
 * **Request URL**: **`PATCH http://37.59.205.27/api/admin/projects/[id]`** (or `PUT`)
 
-#### Request Payload Example
-```json
-{
-  "name": "ZTrip Taxi Platform",
-  "description": "New updated project summary",
-  "isPrivate": true
-}
-```
-
-#### Response Example (200 OK)
-```json
-{
-  "id": "cmqzif8py000ujnnwr4myoilk",
-  "name": "ZTrip Taxi Platform",
-  "description": "New updated project summary",
-  "prefix": "ZT",
-  "startDate": "2026-07-01T00:00:00.000Z",
-  "deadline": "2026-12-31T00:00:00.000Z",
-  "ownerId": "cmqy12345abcde",
-  "isPrivate": true,
-  "deletedAt": null,
-  "statuses": [
-    { "id": "s-1", "name": "Backlog" }
-  ]
-}
-```
-
 ### Delete a Project
 * **Request URL**: **`DELETE http://37.59.205.27/api/admin/projects/[id]`**
 
-#### Response Example (200 OK)
-```json
-{
-  "message": "Project soft-deleted successfully"
-}
-```
+---
+
+## 4. Task Status CRUD APIs
+
+Use these endpoints to manage the custom statuses belonging to a project.
+
+### List All Statuses for a Project
+* **Request URL**: **`GET http://37.59.205.27/api/admin/statuses?projectId=[projectId]`**
+* **Response Example (200 OK)**:
+  ```json
+  [
+    { "id": "status-1", "name": "Backlog", "color": "#64748b", "order": 1, "projectId": "cmqzif8qp001..." },
+    { "id": "status-2", "name": "To Do", "color": "#3b82f6", "order": 2, "projectId": "cmqzif8qp001..." }
+  ]
+  ```
+
+### Create a Task Status
+* **Request URL**: **`POST http://37.59.205.27/api/admin/statuses`**
+* **Payload Example**:
+  ```json
+  {
+    "projectId": "cmqzif8qp001kjnnwm633bjle", // Required
+    "name": "QA Review",                       // Required
+    "color": "#ec4899",                        // Optional hex color
+    "order": 4                                 // Optional sort order
+  }
+  ```
+
+### Update a Task Status
+* **Request URL**: **`PATCH http://37.59.205.27/api/admin/statuses/[id]`**
+* **Payload Example**: (Allows partial updates)
+  ```json
+  {
+    "name": "Passed QA",
+    "color": "#10b981"
+  }
+  ```
+
+### Delete a Task Status
+* **Request URL**: **`DELETE http://37.59.205.27/api/admin/statuses/[id]`**
 
 ---
 
-## 4. Task CRUD APIs
+## 5. Category (Tag) CRUD APIs
 
-These endpoints manage Tasks.
+Tags are global in the database and represent structural boundaries or functional areas such as:
+* `"backend"`
+* `"frontend"`
+* `"database"`
+* `"UI"`
+* `"documentation"`
+
+### List All Categories (Tags)
+* **Request URL**: **`GET http://37.59.205.27/api/admin/tags`**
+* **Response Example (200 OK)**:
+  ```json
+  [
+    { "id": "tag-1", "name": "backend", "color": "#ff0000" },
+    { "id": "tag-2", "name": "frontend", "color": "#00ff00" }
+  ]
+  ```
+
+### Create a Category (Tag)
+* **Request URL**: **`POST http://37.59.205.27/api/admin/tags`**
+* **Payload Example**:
+  ```json
+  {
+    "name": "database", // Required: The unique tag name
+    "color": "#3b82f6"  // Optional hex color
+  }
+  ```
+
+### Update a Category (Tag)
+* **Request URL**: **`PATCH http://37.59.205.27/api/admin/tags/[id]`**
+
+### Delete a Category (Tag)
+* **Request URL**: **`DELETE http://37.59.205.27/api/admin/tags/[id]`**
+
+---
+
+## 6. Task CRUD APIs
 
 ### List Tasks
 * **Request URL**: **`GET http://37.59.205.27/api/admin/tasks`** or **`GET http://37.59.205.27/api/admin/tasks?projectId=cmqzif8py000ujnnwr4myoilk`**
 
-#### Response Example (200 OK)
-```json
-[
-  {
-    "id": "task-uuid-999",
-    "ticketId": "ZT-1",
-    "title": "Setup repository structure",
-    "description": "Basic folder routing structure",
-    "type": "TASK",
-    "priority": "MEDIUM",
-    "storyPoints": 3,
-    "startDate": null,
-    "deadline": null,
-    "status": { "id": "s-1", "name": "Backlog" },
-    "assignee": null,
-    "owner": { "id": "cmqy12345abcde", "name": "Lead Developer", "email": "dev1@digisprint.local" },
-    "project": { "id": "cmqzif8py000ujnnwr4myoilk", "name": "ZTrip Taxi Platform", "prefix": "ZT" }
-  }
-]
-```
-
 ### Create a Task
 * **Request URL**: **`POST http://37.59.205.27/api/admin/tasks`**
-
-#### Request Payload Example
-```json
-{
-  "projectId": "cmqzif8py000ujnnwr4myoilk",
-  "statusId": "s-1",
-  "title": "Create User Profiles",
-  "description": "Enable user settings changes",
-  "type": "USER_STORY", // Allowed types: "TASK", "BUG", "USER_STORY", "EPIC" (default: "TASK")
-  "priority": "HIGH", // Allowed priorities: "LOW", "MEDIUM", "HIGH", "CRITICAL" (default: "MEDIUM")
-  "storyPoints": 8,
-  "assigneeId": "cmqy67890fghij",
-  "ownerId": "cmqy12345abcde"
-}
-```
-
-#### Response Example (200 OK)
-```json
-{
-  "id": "task-uuid-888",
-  "ticketId": "ZT-2",
-  "title": "Create User Profiles",
-  "description": "Enable user settings changes",
-  "type": "USER_STORY",
-  "category": null,
-  "priority": "HIGH",
-  "blockedReason": null,
-  "storyPoints": 8,
-  "startDate": null,
-  "deadline": null,
-  "statusId": "s-1",
-  "projectId": "cmqzif8py000ujnnwr4myoilk",
-  "sprintId": null,
-  "assigneeId": "cmqy67890fghij",
-  "parentId": null,
-  "epicId": null,
-  "ownerId": "cmqy12345abcde",
-  "status": { "id": "s-1", "name": "Backlog" },
-  "assignee": { "id": "cmqy67890fghij", "name": "Frontend Engineer", "email": "dev2@digisprint.local" }
-}
-```
+* **Payload Example**:
+  ```json
+  {
+    "projectId": "cmqzif8py000ujnnwr4myoilk",
+    "statusId": "s-1",
+    "title": "Create User Profiles",
+    "description": "Enable user settings changes",
+    "type": "USER_STORY",             // Allowed types: "TASK", "BUG", "USER_STORY", "EPIC" (default: "TASK")
+    "priority": "HIGH",               // Allowed priorities: "LOW", "MEDIUM", "HIGH", "CRITICAL" (default: "MEDIUM")
+    "category": "frontend",           // Area classification (e.g. backend, frontend, database, UI, documentation)
+    "storyPoints": 8,
+    "assigneeId": "cmqy67890fghij",
+    "ownerId": "cmqy12345abcde"
+  }
+  ```
 
 ### Get Task Details
 * **Request URL**: **`GET http://37.59.205.27/api/admin/tasks/[id]`**
 
-#### Response Example (200 OK)
-```json
-{
-  "id": "task-uuid-888",
-  "ticketId": "ZT-2",
-  "title": "Create User Profiles",
-  "description": "Enable user settings changes",
-  "type": "USER_STORY",
-  "priority": "HIGH",
-  "storyPoints": 8,
-  "status": { "id": "s-1", "name": "Backlog" },
-  "assignee": { "id": "cmqy67890fghij", "name": "Frontend Engineer", "email": "dev2@digisprint.local" }
-}
-```
-
 ### Update a Task
 * **Request URL**: **`PATCH http://37.59.205.27/api/admin/tasks/[id]`** (or `PUT`)
 
-#### Request Payload Example
-```json
-{
-  "statusId": "s-2",
-  "storyPoints": 5
-}
-```
-
-#### Response Example (200 OK)
-```json
-{
-  "id": "task-uuid-888",
-  "title": "Create User Profiles",
-  "storyPoints": 5,
-  "statusId": "s-2",
-  "status": { "id": "s-2", "name": "To Do" }
-}
-```
-
 ### Delete a Task
 * **Request URL**: **`DELETE http://37.59.205.27/api/admin/tasks/[id]`**
-
-#### Response Example (200 OK)
-```json
-{
-  "message": "Task deleted successfully"
-}
-```
