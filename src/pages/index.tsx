@@ -122,7 +122,9 @@ export default function Dashboard() {
       .then(user => {
         setCurrentUser(user);
         if (user?.role === 'ADMIN') {
-          fetch("/api/admin/users").then(r => r.ok && r.json()).then(setUsers);
+          fetch("/api/admin/users")
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setUsers(data); });
         }
       });
 
