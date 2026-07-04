@@ -2331,7 +2331,7 @@ export default function ProjectBoard() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       {(() => {
-                                        const style = getStatusBadgeStyle(sub.status?.name || '', sub.status?.color);
+                                        const style = getStatusBadgeStyle(sub.status?.name ?? '', sub.status?.color ?? undefined);
                                         return (
                                           <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border inline-block" style={style}>
                                             {sub.status?.name}
