@@ -409,7 +409,7 @@ function SprintDraggableTask({
       <div className="p-2 w-32">
         {(() => {
           const status = statuses.find(s => s.id === task.statusId);
-          const style = getStatusBadgeStyle(status?.name || '', status?.color);
+          const style = getStatusBadgeStyle(status?.name ?? '', status?.color ?? undefined);
           return (
             <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border inline-block" style={style}>
               {status?.name}
