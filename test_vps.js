@@ -1,9 +1,9 @@
-fetch('http://37.59.205.27/api/admin/projects', {
-  headers: {
-    'x-api-key': 'vBqUs2lfI5fMcaMXRbvsonmfxELwtPel'
-  }
-}).then(async r => {
-  console.log('Status:', r.status);
-  console.log('Headers:', Object.fromEntries(r.headers.entries()));
-  console.log('Body:', await r.text());
+Promise.all([
+  fetch('http://localhost:3000/api/projects'),
+  fetch('http://localhost:3000/api/tasks'),
+  fetch('http://localhost:3000/api/activity')
+]).then(async ([p, t, a]) => {
+  console.log('Projects:', p.status, await p.text());
+  console.log('Tasks:', t.status, await t.text());
+  console.log('Activity:', a.status, await a.text());
 }).catch(console.error);

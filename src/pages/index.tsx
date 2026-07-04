@@ -34,6 +34,51 @@ const isDueSoon = (value?: string | Date | null) => {
   return diff <= 2 * 24 * 60 * 60 * 1000;
 };
 
+const getStatusBadgeStyle = (statusName: string, originalColor?: string) => {
+  const name = (statusName || '').toLowerCase();
+  if (name.includes('todo') || name.includes('to do') || name.includes('backlog') || name.includes('planned')) {
+    return {
+      color: '#475569', // slate-600
+      backgroundColor: '#f1f5f9', // slate-100
+      borderColor: '#cbd5e1', // slate-300
+    };
+  }
+  if (name.includes('progress') || name.includes('active') || name.includes('doing')) {
+    return {
+      color: '#0f766e', // teal-700
+      backgroundColor: '#f0fdf4', // teal-50
+      borderColor: '#99f6e4', // teal-200
+    };
+  }
+  if (name.includes('done') || name.includes('complete') || name.includes('resolved') || name.includes('closed')) {
+    return {
+      color: '#15803d', // green-700
+      backgroundColor: '#f0fdf4', // green-50
+      borderColor: '#bbf7d0', // green-200
+    };
+  }
+  if (name.includes('block') || name.includes('hold')) {
+    return {
+      color: '#be123c', // rose-700
+      backgroundColor: '#fff1f2', // rose-50
+      borderColor: '#fecdd3', // rose-200
+    };
+  }
+  if (name.includes('review') || name.includes('test')) {
+    return {
+      color: '#6d28d9', // violet-700
+      backgroundColor: '#f5f3ff', // violet-50
+      borderColor: '#ddd6fe', // violet-200
+    };
+  }
+  const color = originalColor || '#888888';
+  return {
+    color: color,
+    backgroundColor: color + '15',
+    borderColor: color + '30',
+  };
+};
+
 function getProjectWorkState(project: ProjectWithWork) {
   const tasks = project.tasks || [];
   const done = tasks.filter(task => isDoneStatus(task.status?.name)).length;
@@ -269,7 +314,14 @@ export default function Dashboard() {
                             {task.deadline && (isDueSoon(task.deadline) || isPastDate(task.deadline)) && (
                               <AlertCircle className={`h-3 w-3 ${isPastDate(task.deadline) ? 'text-destructive animate-pulse' : 'text-amber-500'}`} />
                             )}
-                            <span className="text-[10px] font-bold uppercase" style={{ color: task.status?.color || '#888' }}>{task.status?.name}</span>
+                            {(() => {
+                              const style = getStatusBadgeStyle(task.status?.name || '', task.status?.color);
+                              return (
+                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border inline-block" style={style}>
+                                  {task.status?.name}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       ))}

@@ -186,8 +186,12 @@ export function Header() {
           </Button>
 
           <Link href="/profile">
-            <Button variant="ghost" size="icon" title="Profile">
-              <UserCircle className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+            <Button variant="ghost" size="icon" title="Profile" className="overflow-hidden rounded-full h-8 w-8 flex items-center justify-center border bg-muted">
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                <UserCircle className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+              )}
               <span className="sr-only">Profile</span>
             </Button>
           </Link>

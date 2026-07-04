@@ -40,9 +40,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const to = typeof req.query.to === "string" ? endOfDay(req.query.to) : endOfDay(now.toISOString());
     const sprintId = typeof req.query.sprintId === "string" && req.query.sprintId !== "all" ? req.query.sprintId : undefined;
 
-    const [users, statuses, sprints, tasks] = await Promise.all([
+    const [users, statuses, sprints, tasks, worklogs] = await Promise.all([
       prisma.user.findMany({
-        where: { role: "USER", isActive: true },
+        where: { role: { in: ["USER", "PM"] }, isActive: true },
         select: { id: true, name: true, email: true },
         orderBy: [{ name: "asc" }, { email: "asc" }],
       }),
@@ -65,6 +65,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           project: { select: { id: true, name: true, prefix: true, deadline: true } },
         },
       }),
+      prisma.worklog.findMany({
+        where: {
+          date: { gte: from, lte: to },
+          task: {
+            sprintId: sprintId === "none" ? null : sprintId,
+            project: { deletedAt: null }
+          }
+        }
+      })
     ]);
 
     const periodTasks = tasks.filter(task => task.updatedAt >= from && task.updatedAt <= to);
@@ -87,7 +96,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const overdueTasks = openTasks.filter(task => task.deadline && task.deadline < now);
       const bugTasks = assignedCurrentTasks.filter(task => task.type === "BUG");
       const openBugTasks = bugTasks.filter(task => !isDoneStatus(task.status.name));
-      const loggedTime = assignedPeriodTasks.reduce((sum, task) => sum + Number(task.loggedTime || 0), 0);
+      
+      // Calculate loggedTime using actual worklog entries in this period
+      const loggedTime = worklogs.filter(w => w.userId === user.id).reduce((sum, w) => sum + w.hours, 0);
+      
       const estimatedTime = assignedPeriodTasks.reduce((sum, task) => sum + Number(task.storyPoints || 0), 0);
       const doneEstimate = doneTasks.reduce((sum, task) => sum + Number(task.storyPoints || 0), 0);
       const activeEstimate = openTasks.reduce((sum, task) => sum + Number(task.storyPoints || 0), 0);
@@ -140,7 +152,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       bugs: tasks.filter(task => task.type === "BUG").length,
       openBugs: tasks.filter(task => task.type === "BUG" && !isDoneStatus(task.status.name)).length,
       overdueTasks: currentOpenTasks.filter(task => task.deadline && task.deadline < now).length,
-      loggedTime: periodTasks.reduce((sum, task) => sum + Number(task.loggedTime || 0), 0),
+      loggedTime: worklogs.reduce((sum, w) => sum + w.hours, 0),
       estimatedTime: periodTasks.reduce((sum, task) => sum + Number(task.storyPoints || 0), 0),
       statusCounts: totalStatusCounts,
     };

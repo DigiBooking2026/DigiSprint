@@ -200,7 +200,16 @@ export default function AdminUsers() {
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name || "N/A"}</TableCell>
+                     <TableCell className="font-medium flex items-center gap-2.5">
+                       {user.avatarUrl ? (
+                         <img src={user.avatarUrl} alt={user.name || ""} className="h-7 w-7 rounded-full object-cover border" />
+                       ) : (
+                         <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center border text-muted-foreground text-[10px] font-bold">
+                           {(user.name || user.email || "?").charAt(0).toUpperCase()}
+                         </div>
+                       )}
+                       <span>{user.name || "N/A"}</span>
+                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
                       <Select value={user.role} onValueChange={(val) => updateRole(user.id, val || 'USER')}>

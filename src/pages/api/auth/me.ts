@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true, isActive: true }
+    select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true }
   });
 
   if (!user?.isActive) return res.status(403).json({ error: "Account deactivated" });

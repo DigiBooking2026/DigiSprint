@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         include: {
           attachments: true,
           statuses: true,
+          owner: { select: { id: true, name: true, email: true, avatarUrl: true } },
           members: { select: { id: true, name: true, email: true } },
           tasks: {
             include: {
@@ -68,6 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           _count: { select: { tasks: true } },
           attachments: true,
           statuses: true,
+          owner: { select: { id: true, name: true, email: true, avatarUrl: true } },
           members: { select: { id: true, name: true, email: true } },
           tasks: {
             select: {

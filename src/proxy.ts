@@ -17,6 +17,9 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (session && isPublicPath && !request.nextUrl.pathname.startsWith('/api/auth/logout')) {
+    if (request.nextUrl.pathname.startsWith('/api')) {
+      return NextResponse.next()
+    }
     return NextResponse.redirect(new URL('/', request.url))
   }
 

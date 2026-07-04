@@ -81,6 +81,7 @@ type ExtendedProject = Project & {
   tasks?: ExtendedTask[];
   statuses?: TaskStatus[];
   members?: { id: string; name: string | null; email: string }[];
+  owner?: User | null;
 };
 
 const isDoneStatus = (name?: string) => /done|closed|complete|cancelled/i.test(name || "");
@@ -92,10 +93,10 @@ const isDueSoon = (value?: string | Date | null) => {
   return diff <= 2 * 24 * 60 * 60 * 1000;
 };
 const priorityStyles: Record<string, string> = {
-  LOW: "border-slate-400/30 bg-slate-400/10 text-slate-600",
-  MEDIUM: "border-blue-500/30 bg-blue-500/10 text-blue-600",
-  HIGH: "border-amber-500/30 bg-amber-500/10 text-amber-600",
-  CRITICAL: "border-destructive/30 bg-destructive/10 text-destructive",
+  LOW: "border-[#cbd5e1] bg-[#f1f5f9] text-[#374151]",
+  MEDIUM: "border-[#bae6fd] bg-[#f0f9ff] text-[#0369a1]",
+  HIGH: "border-[#fef08a] bg-[#fefce8] text-[#a16207]",
+  CRITICAL: "border-[#fecaca] bg-[#fff5f5] text-[#be123c]",
 };
 
 function SortableTaskCard({ 
@@ -237,7 +238,7 @@ function SortableTaskCard({
                   className="h-6 text-[9px] w-[85px] border-0 font-semibold"
                   style={{ 
                     backgroundColor: (currentStatus?.color || '#ccc') + '25',
-                    color: currentStatus?.color || '#333',
+                    color: '#374151',
                   }}
                 >
                   <span className="truncate">{currentStatus?.name || "Status"}</span>
@@ -325,7 +326,65 @@ function SprintDroppableArea({ id, children, className, isSprint }: { id: string
   );
 }
 
-function SprintDraggableTask({ task, statuses, handleOpenTask }: { task: ExtendedTask, statuses: TaskStatus[], handleOpenTask: (t: ExtendedTask) => void }) {
+const getStatusBadgeStyle = (statusName: string, originalColor?: string) => {
+  const name = (statusName || '').toLowerCase();
+  const textColor = '#374151'; // Slate-700 / Dark grey for high-end feel
+  if (name.includes('todo') || name.includes('to do') || name.includes('backlog') || name.includes('planned')) {
+    return {
+      color: textColor,
+      backgroundColor: '#f1f5f9', // slate-100
+      borderColor: '#cbd5e1', // slate-300
+    };
+  }
+  if (name.includes('progress') || name.includes('active') || name.includes('doing')) {
+    return {
+      color: textColor,
+      backgroundColor: '#f0fdfa', // teal-50
+      borderColor: '#99f6e4', // teal-200
+    };
+  }
+  if (name.includes('done') || name.includes('complete') || name.includes('resolved') || name.includes('closed')) {
+    return {
+      color: textColor,
+      backgroundColor: '#f0fdf4', // green-50
+      borderColor: '#bbf7d0', // green-200
+    };
+  }
+  if (name.includes('block') || name.includes('hold')) {
+    return {
+      color: textColor,
+      backgroundColor: '#fff1f2', // rose-50
+      borderColor: '#fecdd3', // rose-200
+    };
+  }
+  if (name.includes('review') || name.includes('test')) {
+    return {
+      color: textColor,
+      backgroundColor: '#f5f3ff', // violet-50
+      borderColor: '#ddd6fe', // violet-200
+    };
+  }
+  const color = originalColor || '#888888';
+  return {
+    color: textColor,
+    backgroundColor: color + '15',
+    borderColor: color + '30',
+  };
+};
+
+function SprintDraggableTask({ 
+  task, 
+  statuses, 
+  handleOpenTask,
+  users = [],
+  updateTaskAssignee
+}: { 
+  task: ExtendedTask, 
+  statuses: TaskStatus[], 
+  handleOpenTask: (t: ExtendedTask) => void,
+  users?: User[],
+  updateTaskAssignee?: (taskId: string, assigneeId: string) => Promise<void>
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: task.id,
     data: task,
@@ -337,6 +396,9 @@ function SprintDraggableTask({ task, statuses, handleOpenTask }: { task: Extende
     return <div ref={setNodeRef} style={style} className="opacity-50 border-b last:border-0 p-2 flex items-center bg-card">Dragging {task.ticketId}...</div>;
   }
 
+  const assigneeUser = task.assigneeId ? (users.find(u => u.id === task.assigneeId) || task.assignee) : task.assignee;
+  const assigneeName = assigneeUser?.name || assigneeUser?.email || "Unassigned";
+
   return (
     <div ref={setNodeRef} style={style} className="flex items-center border-b last:border-0 hover:bg-muted/30 cursor-pointer bg-card group transition-colors" onClick={() => handleOpenTask(task)}>
       <div {...listeners} {...attributes} className="p-2 cursor-grab active:cursor-grabbing text-muted-foreground opacity-20 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
@@ -344,7 +406,27 @@ function SprintDraggableTask({ task, statuses, handleOpenTask }: { task: Extende
       </div>
       <div className="p-2 w-24 font-mono text-xs text-muted-foreground">{task.ticketId}</div>
       <div className="p-2 flex-1 font-medium">{task.title}</div>
-      <div className="p-2 w-32"><span className="text-[10px] font-bold uppercase" style={{ color: statuses.find(s => s.id === task.statusId)?.color || '#888' }}>{statuses.find(s => s.id === task.statusId)?.name}</span></div>
+      <div className="p-2 w-32">
+        {(() => {
+          const status = statuses.find(s => s.id === task.statusId);
+          const style = getStatusBadgeStyle(status?.name || '', status?.color);
+          return (
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border inline-block" style={style}>
+              {status?.name}
+            </span>
+          );
+        })()}
+      </div>
+      
+      <div className="p-2 w-[160px] flex items-center gap-2 overflow-hidden">
+        {assigneeUser?.avatarUrl ? (
+          <img src={assigneeUser.avatarUrl} alt={assigneeName} className="h-6 w-6 rounded-full object-cover shrink-0 border" />
+        ) : (
+          <UserIcon className="h-6 w-6 p-1 rounded-full bg-muted text-muted-foreground shrink-0 border" />
+        )}
+        <span className="text-xs font-medium truncate">{assigneeName}</span>
+      </div>
+
       <div className="p-2 w-16 text-center font-medium">{task.storyPoints}h</div>
     </div>
   );
@@ -365,8 +447,9 @@ export default function ProjectBoard() {
   const [project, setProject] = useState<ExtendedProject | null>(null);
   
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"kanban" | "list" | "sprints" | "releases" | "roadmap">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "list" | "sprints" | "releases" | "roadmap">("sprints");
   const [activeSprintFilter, setActiveSprintFilter] = useState<string>("all");
+  const [sprintStatusFilter, setSprintStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_desc");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dragStartStatus, setDragStartStatus] = useState<string | null>(null);
@@ -385,6 +468,7 @@ export default function ProjectBoard() {
   const [editPriority, setEditPriority] = useState("");
   const [editBlockedReason, setEditBlockedReason] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("");
+  const [editAssigneeId, setEditAssigneeId] = useState("unassigned");
   const [editEpicId, setEditEpicId] = useState<string | null>(null);
   const [editSprintId, setEditSprintId] = useState<string | null>(null);
   const [editReleaseId, setEditReleaseId] = useState<string | null>(null);
@@ -567,6 +651,7 @@ export default function ProjectBoard() {
       setEditPriority(data.priority);
       setEditBlockedReason(data.blockedReason || "");
       setEditOwnerId(data.ownerId);
+      setEditAssigneeId(data.assigneeId || "unassigned");
       setEditEpicId(data.epic?.id || null);
       setEditSprintId(data.sprint?.id || "none");
       setEditReleaseId(data.releaseId || "");
@@ -595,6 +680,7 @@ export default function ProjectBoard() {
         priority: editPriority,
         blockedReason: editBlockedReason || null,
         ownerId: editOwnerId,
+        assigneeId: editAssigneeId === "unassigned" ? null : editAssigneeId,
         epicId: editType !== "EPIC" ? editEpicId : null,
         sprintId: editSprintId === "none" ? null : editSprintId || null,
         releaseId: editReleaseId === "none" ? null : editReleaseId || null,
@@ -1009,6 +1095,50 @@ export default function ProjectBoard() {
     .sort((a, b) => b.active - a.active || b.hours - a.hours)
     .slice(0, 6);
 
+  const renderHierarchicalTasks = (taskList: ExtendedTask[]) => {
+    // Find all tasks that are subtasks of another task in this same list
+    const subtaskIds = new Set(
+      taskList.filter(t => t.parentId && taskList.some(p => p.id === t.parentId)).map(t => t.id)
+    );
+
+    // Top-level tasks for this list are tasks that are not subtasks of another task in this list
+    const topLevelTasks = taskList.filter(t => !subtaskIds.has(t.id));
+
+    return topLevelTasks.map(parentTask => {
+      // Find all subtasks of this parent task in this list
+      const childTasks = taskList.filter(t => t.parentId === parentTask.id);
+
+      return (
+        <div key={parentTask.id} className="w-full">
+          {/* Render Parent Task */}
+          <SprintDraggableTask 
+            task={parentTask} 
+            statuses={statuses} 
+            handleOpenTask={handleOpenTask} 
+            users={users} 
+            updateTaskAssignee={updateTaskAssignee} 
+          />
+          
+          {/* Render Child Tasks with Left Indentation */}
+          {childTasks.length > 0 && (
+            <div className="pl-6 border-l-2 border-dashed border-muted/50 ml-5 my-1.5 space-y-1.5">
+              {childTasks.map(childTask => (
+                <SprintDraggableTask 
+                  key={childTask.id} 
+                  task={childTask} 
+                  statuses={statuses} 
+                  handleOpenTask={handleOpenTask} 
+                  users={users} 
+                  updateTaskAssignee={updateTaskAssignee} 
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-muted/20">
       <Header />
@@ -1054,8 +1184,19 @@ export default function ProjectBoard() {
                 </DropdownMenu>
               )}
             </div>
-            <p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
+            <p className="text-muted-foreground text-sm flex items-center flex-wrap gap-2 mt-1">
               <Clock className="h-4 w-4" /> Total Story Points: <span className="font-semibold text-foreground">{totalStoryPoints} hrs</span>
+              {project?.owner && (
+                <span className="inline-flex items-center gap-1.5 ml-2 border px-2 py-0.5 rounded text-xs bg-muted/50 text-muted-foreground shrink-0">
+                  <span className="font-semibold text-foreground">PM:</span>
+                  {project.owner.avatarUrl ? (
+                    <img src={project.owner.avatarUrl} alt={project.owner.name || ""} className="h-4 w-4 rounded-full object-cover border" />
+                  ) : (
+                    <UserIcon className="h-3 w-3" />
+                  )}
+                  <span className="text-foreground font-medium">{project.owner.name || project.owner.email}</span>
+                </span>
+              )}
               {projectIsOverdue && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold uppercase text-destructive">
                   <AlertCircle className="h-3 w-3" />
@@ -1423,24 +1564,38 @@ export default function ProjectBoard() {
                 <h3 className="font-bold">Sprints</h3>
                 <p className="text-xs text-muted-foreground mt-1">Plan and manage your active sprints</p>
               </div>
-              <Dialog open={openSprintForm} onOpenChange={setOpenSprintForm}>
-                <DialogTrigger render={<Button variant="outline" className="gap-2"><PlusCircle className="h-4 w-4" /> Create Sprint</Button>} />
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader><DialogTitle>Create Sprint</DialogTitle></DialogHeader>
-                  <form onSubmit={handleCreateSprint} className="space-y-4">
-                    <div className="space-y-2"><Label>Name</Label><Input required value={sprintName} onChange={(e) => setSprintName(e.target.value)} placeholder="e.g. Sprint 1" /></div>
-                    <div className="space-y-2"><Label>Goal</Label><Input value={sprintGoal} onChange={(e) => setSprintGoal(e.target.value)} /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={sprintStartDate} onChange={(e) => setSprintStartDate(e.target.value)} /></div>
-                      <div className="space-y-2"><Label>End Date</Label><Input type="date" value={sprintEndDate} onChange={(e) => setSprintEndDate(e.target.value)} /></div>
-                    </div>
-                    <Button type="submit" className="w-full">Create Sprint</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <div className="flex items-center gap-3">
+                <Select value={sprintStatusFilter} onValueChange={(val) => setSprintStatusFilter(val || "all")}>
+                  <SelectTrigger className="w-[140px] h-9 text-xs">
+                    <SelectValue placeholder="Status Filter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">All Sprints</SelectItem>
+                    <SelectItem value="ACTIVE" className="text-xs">Active</SelectItem>
+                    <SelectItem value="PLANNED" className="text-xs">Planned</SelectItem>
+                    <SelectItem value="COMPLETED" className="text-xs">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Dialog open={openSprintForm} onOpenChange={setOpenSprintForm}>
+                  <DialogTrigger render={<Button variant="outline" className="gap-2"><PlusCircle className="h-4 w-4" /> Create Sprint</Button>} />
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader><DialogTitle>Create Sprint</DialogTitle></DialogHeader>
+                    <form onSubmit={handleCreateSprint} className="space-y-4">
+                      <div className="space-y-2"><Label>Name</Label><Input required value={sprintName} onChange={(e) => setSprintName(e.target.value)} placeholder="e.g. Sprint 1" /></div>
+                      <div className="space-y-2"><Label>Goal</Label><Input value={sprintGoal} onChange={(e) => setSprintGoal(e.target.value)} /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={sprintStartDate} onChange={(e) => setSprintStartDate(e.target.value)} /></div>
+                        <div className="space-y-2"><Label>End Date</Label><Input type="date" value={sprintEndDate} onChange={(e) => setSprintEndDate(e.target.value)} /></div>
+                      </div>
+                      <Button type="submit" className="w-full">Create Sprint</Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
             
-            {sprints.map(sprint => {
+            {sprints.filter(sprint => sprintStatusFilter === "all" || sprint.status === sprintStatusFilter).map(sprint => {
               const sprintTasks = tasks.filter(t => t.sprintId === sprint.id);
               const sprintDone = sprintTasks.filter(task => isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name)).length;
               return (
@@ -1511,9 +1666,7 @@ export default function ProjectBoard() {
                         {sprintTasks.length === 0 ? (
                           <div className="text-center py-8 text-xs text-muted-foreground italic flex-1 flex items-center justify-center">No tasks in this sprint. Drag tasks here to assign them.</div>
                         ) : (
-                          sprintTasks.map(task => (
-                            <SprintDraggableTask key={task.id} task={task} statuses={statuses} handleOpenTask={handleOpenTask} />
-                          ))
+                          renderHierarchicalTasks(sprintTasks)
                         )}
                       </SortableContext>
                     </SprintDroppableArea>
@@ -1534,19 +1687,20 @@ export default function ProjectBoard() {
               <div className="p-2">
                 <SprintDroppableArea id="backlog">
                   <SortableContext items={tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).map(t => t.id)} strategy={verticalListSortingStrategy}>
-                    {tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).length === 0 ? (
-                      <div className="text-center py-8 text-xs text-muted-foreground italic flex-1 flex items-center justify-center">Backlog is empty. Drag tasks here to move them out of sprints.</div>
-                    ) : (
-                      tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name)).map(task => (
-                        <SprintDraggableTask key={task.id} task={task} statuses={statuses} handleOpenTask={handleOpenTask} />
-                      ))
-                    )}
+                    {(() => {
+                      const backlogTasks = tasks.filter(t => !t.sprintId && !isDoneStatus(statuses.find(s => s.id === t.statusId)?.name || t.status?.name));
+                      return backlogTasks.length === 0 ? (
+                        <div className="text-center py-8 text-xs text-muted-foreground italic flex-1 flex items-center justify-center">Backlog is empty. Drag tasks here to move them out of sprints.</div>
+                      ) : (
+                        renderHierarchicalTasks(backlogTasks)
+                      );
+                    })()}
                   </SortableContext>
                 </SprintDroppableArea>
               </div>
             </div>
           </div>
-          <DragOverlay>{activeTask ? <div className="w-[500px] shadow-2xl opacity-80"><SprintDraggableTask task={activeTask} statuses={statuses} handleOpenTask={()=>{}} /></div> : null}</DragOverlay>
+          <DragOverlay>{activeTask ? <div className="w-[500px] shadow-2xl opacity-80"><SprintDraggableTask task={activeTask} statuses={statuses} handleOpenTask={()=>{}} users={users} updateTaskAssignee={updateTaskAssignee} /></div> : null}</DragOverlay>
           </DndContext>
         ) : viewMode === "releases" ? (
           <div className="flex-1 overflow-auto space-y-6">
@@ -1706,52 +1860,73 @@ export default function ProjectBoard() {
              <table className="w-full text-sm">
                 <thead><tr className="border-b bg-muted/50"><th className="text-left p-3">Ticket</th><th className="text-left p-3">Title</th><th className="text-left p-3">Type</th><th className="text-left p-3">Priority</th><th className="text-left p-3">Status</th><th className="text-left p-3">Assignee</th><th className="text-center p-3">Points</th><th className="text-right p-3">Actions</th></tr></thead>
                 <tbody>
-                  {tasks.filter(t => activeSprintFilter === "all" || (activeSprintFilter === "none" && !t.sprintId) || t.sprintId === activeSprintFilter).sort((a, b) => {
-                    if (sortBy === "deadline_asc") {
-                      if (!a.deadline) return 1;
-                      if (!b.deadline) return -1;
-                      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-                    }
-                    if (sortBy === "priority_desc") {
-                      const pOrder: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
-                      return (pOrder[b.priority || "MEDIUM"] || 0) - (pOrder[a.priority || "MEDIUM"] || 0);
-                    }
-                    if (sortBy === "points_desc") {
-                      return (b.storyPoints || 0) - (a.storyPoints || 0);
-                    }
-                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                  }).map(task => {
-                    const currentStatus = statuses.find(s => s.id === task.statusId);
-                    return (
-                      <tr key={task.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleOpenTask(task)}>
-                        <td className="p-3 font-mono text-xs text-muted-foreground flex items-center gap-2">
-                          {task.ticketId}
-                          {task.deadline && new Date(task.deadline) < new Date() && !isDoneStatus(currentStatus?.name) && (
-                            <span title={`Overdue: ${new Date(task.deadline).toLocaleDateString()}`}>
-                              <AlertCircle className="h-3.5 w-3.5 text-destructive animate-pulse" />
-                            </span>
-                          )}
-                          {task.deadline && isDoneStatus(currentStatus?.name) && new Date(task.updatedAt) > new Date(task.deadline) && (
-                            <span title={`Done Late (Deadline: ${new Date(task.deadline).toLocaleDateString()})`}>
-                              <CheckCircle2 className="h-3.5 w-3.5 text-amber-500" />
-                            </span>
-                          )}
-                          {task.deadline && isDueSoon(task.deadline) && !isDoneStatus(currentStatus?.name) && (
-                            <span title={`Due soon: ${new Date(task.deadline).toLocaleDateString()}`}>
-                              <Clock className="h-3.5 w-3.5 text-amber-500" />
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 font-medium">{task.title}</td>
-                        <td className="p-3"><div className="flex items-center gap-1.5">{task.type === 'BUG' ? <Bug className="h-3 w-3 text-destructive" /> : <Code className="h-3 w-3 text-primary" />}<span className="text-xs">{task.type}</span></div></td>
-                        <td className="p-3"><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${priorityStyles[task.priority || "MEDIUM"] || priorityStyles.MEDIUM}`}><Flag className="h-3 w-3" />{task.priority || "MEDIUM"}</span></td>
-                        <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.statusId} onValueChange={(val) => updateTaskStatus(task.id, val || "")}><SelectTrigger className="h-8 text-xs w-[140px] font-semibold" style={{ backgroundColor: (currentStatus?.color || '#ccc') + '20', color: currentStatus?.color || '#333', borderLeft: `4px solid ${currentStatus?.color || '#ccc'}` }}><span className="truncate">{currentStatus?.name || "Status"}</span></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>)}</SelectContent></Select></div></td>
-                        <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.assigneeId || "unassigned"} onValueChange={(val) => updateTaskAssignee(task.id, val || "unassigned")}><SelectTrigger className="h-8 text-xs w-[150px]"><div className="flex items-center gap-1.5 overflow-hidden"><UserIcon className="h-3 w-3 flex-shrink-0" /><span className="truncate">{getUserDisplay(task.assigneeId, "Unassigned", task.assignee)}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-xs">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name || u.email}</SelectItem>)}</SelectContent></Select></div></td>
-                        <td className="p-3 text-center font-medium">{task.storyPoints}h</td>
-                        <td className="p-3 text-right"><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); showConfirm("Delete?", `Delete ${task.title}?`, () => deleteTask(task.id)); }}><Trash2 className="h-4 w-4" /></Button></td>
-                      </tr>
-                    );
-                  })}
+                  {(() => {
+                    const filteredTasks = tasks.filter(t => activeSprintFilter === "all" || (activeSprintFilter === "none" && !t.sprintId) || t.sprintId === activeSprintFilter);
+                    
+                    // Sort top-level tasks based on sortBy criteria
+                    const sortedParents = filteredTasks.filter(t => !t.parentId || !filteredTasks.some(p => p.id === t.parentId)).sort((a, b) => {
+                      if (sortBy === "deadline_asc") {
+                        if (!a.deadline) return 1;
+                        if (!b.deadline) return -1;
+                        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+                      }
+                      if (sortBy === "priority_desc") {
+                        const pOrder: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+                        return (pOrder[b.priority || "MEDIUM"] || 0) - (pOrder[a.priority || "MEDIUM"] || 0);
+                      }
+                      if (sortBy === "points_desc") {
+                        return (b.storyPoints || 0) - (a.storyPoints || 0);
+                      }
+                      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                    });
+
+                    const orderedTasks: { task: ExtendedTask, isSubtask: boolean }[] = [];
+                    sortedParents.forEach(parent => {
+                      orderedTasks.push({ task: parent, isSubtask: false });
+                      const children = filteredTasks.filter(t => t.parentId === parent.id);
+                      children.forEach(child => {
+                        orderedTasks.push({ task: child, isSubtask: true });
+                      });
+                    });
+
+                    return orderedTasks.map(({ task, isSubtask }) => {
+                      const currentStatus = statuses.find(s => s.id === task.statusId);
+                      return (
+                        <tr key={task.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleOpenTask(task)}>
+                          <td className="p-3 font-mono text-xs text-muted-foreground flex items-center gap-2">
+                            {task.ticketId}
+                            {task.deadline && new Date(task.deadline) < new Date() && !isDoneStatus(currentStatus?.name) && (
+                              <span title={`Overdue: ${new Date(task.deadline).toLocaleDateString()}`}>
+                                <AlertCircle className="h-3.5 w-3.5 text-destructive animate-pulse" />
+                              </span>
+                            )}
+                            {task.deadline && isDoneStatus(currentStatus?.name) && new Date(task.updatedAt) > new Date(task.deadline) && (
+                              <span title={`Done Late (Deadline: ${new Date(task.deadline).toLocaleDateString()})`}>
+                                <CheckCircle2 className="h-3.5 w-3.5 text-amber-500" />
+                              </span>
+                            )}
+                            {task.deadline && isDueSoon(task.deadline) && !isDoneStatus(currentStatus?.name) && (
+                              <span title={`Due soon: ${new Date(task.deadline).toLocaleDateString()}`}>
+                                <Clock className="h-3.5 w-3.5 text-amber-500" />
+                              </span>
+                            )}
+                          </td>
+                          <td className={`p-3 font-medium ${isSubtask ? 'pl-8' : ''}`}>
+                            <div className="flex items-center gap-1.5">
+                              {isSubtask && <span className="text-muted-foreground/50 font-mono">↳</span>}
+                              <span className={isSubtask ? 'text-muted-foreground' : ''}>{task.title}</span>
+                            </div>
+                          </td>
+                          <td className="p-3"><div className="flex items-center gap-1.5">{task.type === 'BUG' ? <Bug className="h-3 w-3 text-destructive" /> : <Code className="h-3 w-3 text-primary" />}<span className="text-xs">{task.type}</span></div></td>
+                          <td className="p-3"><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${priorityStyles[task.priority || "MEDIUM"] || priorityStyles.MEDIUM}`}><Flag className="h-3 w-3" />{task.priority || "MEDIUM"}</span></td>
+                          <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.statusId} onValueChange={(val) => updateTaskStatus(task.id, val || "")}><SelectTrigger className="h-8 text-xs w-[140px] font-semibold" style={{ backgroundColor: (currentStatus?.color || '#ccc') + '20', color: '#374151', borderLeft: `4px solid ${currentStatus?.color || '#ccc'}` }}><span className="truncate">{currentStatus?.name || "Status"}</span></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>)}</SelectContent></Select></div></td>
+                          <td className="p-3"><div onClick={(e) => e.stopPropagation()}><Select value={task.assigneeId || "unassigned"} onValueChange={(val) => updateTaskAssignee(task.id, val || "unassigned")}><SelectTrigger className="h-8 text-xs w-[150px]"><div className="flex items-center gap-1.5 overflow-hidden"><UserIcon className="h-3 w-3 flex-shrink-0" /><span className="truncate">{getUserDisplay(task.assigneeId, "Unassigned", task.assignee)}</span></div></SelectTrigger><SelectContent><SelectItem value="unassigned" className="text-xs">Unassigned</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name || u.email}</SelectItem>)}</SelectContent></Select></div></td>
+                          <td className="p-3 text-center font-medium">{task.storyPoints}h</td>
+                          <td className="p-3 text-right"><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); showConfirm("Delete?", `Delete ${task.title}?`, () => deleteTask(task.id)); }}><Trash2 className="h-4 w-4" /></Button></td>
+                        </tr>
+                      );
+                    });
+                  })()}
                 </tbody>
              </table>
           </div>
@@ -1760,7 +1935,7 @@ export default function ProjectBoard() {
 
       {/* Task Details Modal */}
       <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
-        <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl border-none">
+        <DialogContent className="w-[90vw] max-w-7xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl border-none">
           <div className="flex flex-1 overflow-hidden">
             {/* LEFT: Task Info */}
             <div className="flex-1 p-8 overflow-y-auto bg-background">
@@ -1778,6 +1953,37 @@ export default function ProjectBoard() {
                   <span className="inline-flex items-center gap-1 rounded-full border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     <UserIcon className="h-3 w-3" />
                     Owner: {selectedTask?.owner?.name || selectedTask?.owner?.email || "Unknown"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted pl-2.5 pr-1 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {selectedTask?.assignee?.avatarUrl ? (
+                      <img src={selectedTask.assignee.avatarUrl} alt={selectedTask.assignee.name || ""} className="h-4.5 w-4.5 rounded-full object-cover border" />
+                    ) : (
+                      <UserIcon className="h-3 w-3" />
+                    )}
+                    <span className="text-muted-foreground font-bold">Assignee:</span>
+                    {selectedTask && (
+                      <Select 
+                        value={selectedTask.assigneeId || "unassigned"} 
+                        onValueChange={(val) => updateTaskAssignee(selectedTask.id, val || "unassigned")}
+                      >
+                        <SelectTrigger className="h-5 border-none bg-transparent hover:bg-muted-foreground/10 text-[10px] font-bold uppercase px-1.5 py-0 shadow-none focus:ring-0 gap-1">
+                          <SelectValue placeholder="Unassigned" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999]">
+                          <SelectItem value="unassigned" className="text-xs font-bold">Unassigned</SelectItem>
+                          {users.map(u => (
+                            <SelectItem key={u.id} value={u.id} className="text-xs font-bold">
+                              {u.name || u.email}
+                            </SelectItem>
+                          ))}
+                          {selectedTask.assignee && !users.some(u => u.id === selectedTask.assigneeId) && (
+                            <SelectItem value={selectedTask.assigneeId!} className="text-xs font-bold">
+                              {selectedTask.assignee.name || selectedTask.assignee.email}
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     <Clock className="h-3 w-3" />
@@ -1803,42 +2009,32 @@ export default function ProjectBoard() {
               
               {isEditing ? (
                 <div className="space-y-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="grid grid-cols-3 gap-6">
+                  <h3 className="text-sm font-bold uppercase tracking-tight text-primary flex items-center gap-2">
+                    <Edit3 className="h-4 w-4" /> Edit Task Attributes
+                  </h3>
+                  
+                  {/* Task Title */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-muted-foreground uppercase">Task Title</Label>
+                    <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="font-semibold text-lg w-full" />
+                  </div>
+
+                  {/* Attribute Fields Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/20 p-6 rounded-xl border border-muted-foreground/10">
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Type</Label>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Type</Label>
                       <Select value={editType} onValueChange={(val) => setEditType(val || "TASK")}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent className="z-[9999]">
                           <SelectItem value="TASK">Task</SelectItem>
                           <SelectItem value="BUG">Bug</SelectItem>
                           <SelectItem value="EPIC">Epic</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Task Title</Label>
-                      <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-xl font-bold h-12" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
+
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Story Points (hrs)</Label>
-                      <Input type="number" step="0.5" value={editPoints} onChange={(e) => setEditPoints(e.target.value)} />
-                    </div>
-                    {editType === "EPIC" && (
-                      <div className="space-y-2">
-                        <Label className="text-xs font-bold text-primary uppercase">Start Date</Label>
-                        <Input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} />
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Deadline</Label>
-                      <Input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Status</Label>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Status</Label>
                       <Select value={selectedTask?.statusId || ""} onValueChange={async (val) => {
                         if (!selectedTask) return;
                         await fetch(`/api/tasks/${selectedTask.id}`, {
@@ -1849,24 +2045,103 @@ export default function ProjectBoard() {
                         fetchTaskDetails(selectedTask.id);
                         fetchData();
                       }}>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <span className="truncate">{statuses.find(s => s.id === selectedTask?.statusId)?.name || "Status"}</span>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[9999]">
                           {statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-6">
-                    {editType !== "EPIC" && (
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Priority</Label>
+                      <Select value={editPriority} onValueChange={(val) => setEditPriority(val || "MEDIUM")}>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent className="z-[9999]">
+                          <SelectItem value="LOW">Low</SelectItem>
+                          <SelectItem value="MEDIUM">Medium</SelectItem>
+                          <SelectItem value="HIGH">High</SelectItem>
+                          <SelectItem value="CRITICAL">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Story Points (hrs)</Label>
+                      <Input type="number" step="0.5" value={editPoints} onChange={(e) => setEditPoints(e.target.value)} className="w-full" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Assign To</Label>
+                      <Select value={editAssigneeId} onValueChange={(val) => setEditAssigneeId(val || "unassigned")}>
+                        <SelectTrigger className="w-full">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate">
+                              {editAssigneeId === "unassigned" 
+                                ? "Unassigned" 
+                                : (users.find(u => u.id === editAssigneeId)?.name || 
+                                   users.find(u => u.id === editAssigneeId)?.email || 
+                                   (selectedTask?.assigneeId === editAssigneeId && (selectedTask?.assignee?.name || selectedTask?.assignee?.email)) ||
+                                   editAssigneeId)}
+                            </span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999]">
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}
+                          {selectedTask?.assignee && !users.some(u => u.id === selectedTask.assigneeId) && (
+                            <SelectItem value={selectedTask.assigneeId!}>{selectedTask.assignee.name || selectedTask.assignee.email}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Owner / Creator</Label>
+                      <Select value={editOwnerId} onValueChange={(val) => setEditOwnerId(val || "")}>
+                        <SelectTrigger className="w-full">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate">
+                              {users.find(u => u.id === editOwnerId)?.name || 
+                               users.find(u => u.id === editOwnerId)?.email || 
+                               (selectedTask?.ownerId === editOwnerId && (selectedTask?.owner?.name || selectedTask?.owner?.email)) ||
+                               editOwnerId || "Select Owner"}
+                            </span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999]">
+                          {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}
+                          {selectedTask?.owner && !users.some(u => u.id === selectedTask.ownerId) && (
+                            <SelectItem value={selectedTask.ownerId!}>{selectedTask.owner.name || selectedTask.owner.email}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Sprint</Label>
+                      <Select value={editSprintId || "none"} onValueChange={(val) => setEditSprintId(val === "none" ? null : (val || null))}>
+                        <SelectTrigger className="w-full">
+                          <span className="truncate">{!editSprintId || editSprintId === "none" ? "Backlog" : (sprints.find(s => s.id === editSprintId)?.name || editSprintId)}</span>
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999]">
+                          <SelectItem value="none">Backlog</SelectItem>
+                          {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {editType !== "EPIC" ? (
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold text-primary uppercase">Epic</Label>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">Epic</Label>
                         <Select value={editEpicId || "none"} onValueChange={(val) => setEditEpicId(val === "none" ? null : val)}>
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full">
                             <span className="truncate">{!editEpicId || editEpicId === "none" ? "None" : (tasks.find(t => t.id === editEpicId)?.title || editEpicId)}</span>
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[9999]">
                             <SelectItem value="none">None</SelectItem>
                             {tasks.filter(t => t.type === "EPIC" && t.id !== selectedTask?.id).map(t => (
                               <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
@@ -1874,9 +2149,15 @@ export default function ProjectBoard() {
                           </SelectContent>
                         </Select>
                       </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">Start Date</Label>
+                        <Input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className="w-full" />
+                      </div>
                     )}
+
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Parent Task</Label>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Parent Task</Label>
                       <Select 
                         value={selectedTask?.parent?.id || "none"} 
                         onValueChange={async (val) => {
@@ -1891,10 +2172,10 @@ export default function ProjectBoard() {
                           fetchData();
                         }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <span className="truncate">{selectedTask?.parent ? selectedTask.parent.title : "None"}</span>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[9999]">
                           <SelectItem value="none">None</SelectItem>
                           {tasks.filter(t => t.id !== selectedTask?.id && t.type !== "EPIC").map(t => (
                             <SelectItem key={t.id} value={t.id}>{t.ticketId} - {t.title}</SelectItem>
@@ -1902,96 +2183,72 @@ export default function ProjectBoard() {
                         </SelectContent>
                       </Select>
                     </div>
+
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Sprint</Label>
-                      <Select value={editSprintId || "none"} onValueChange={(val) => setEditSprintId(val === "none" ? null : (val || null))}>
-                        <SelectTrigger>
-                          <span className="truncate">{!editSprintId || editSprintId === "none" ? "Backlog" : (sprints.find(s => s.id === editSprintId)?.name || editSprintId)}</span>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Backlog</SelectItem>
-                          {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Release</Label>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Release</Label>
                       <Select value={editReleaseId || "none"} onValueChange={(val) => setEditReleaseId(val === "none" ? null : (val || null))}>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <span className="truncate">{!editReleaseId || editReleaseId === "none" ? "Unreleased" : (releases.find(r => r.id === editReleaseId)?.name || editReleaseId)}</span>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[9999]">
                           <SelectItem value="none">Unreleased</SelectItem>
                           {releases.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
+
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Priority</Label>
-                      <Select value={editPriority} onValueChange={(val) => setEditPriority(val || "MEDIUM")}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="LOW">Low</SelectItem>
-                          <SelectItem value="MEDIUM">Medium</SelectItem>
-                          <SelectItem value="HIGH">High</SelectItem>
-                          <SelectItem value="CRITICAL">Critical</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Deadline</Label>
+                      <Input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="w-full" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Owner</Label>
-                      <Select value={editOwnerId} onValueChange={(val) => setEditOwnerId(val || "")}>
-                        <SelectTrigger><div className="flex min-w-0 items-center gap-1.5"><UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate">{getUserDisplay(editOwnerId, selectedOwnerLabel, selectedTask?.owner)}</span></div></SelectTrigger>
-                        <SelectContent>
-                          {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary uppercase">Tags</Label>
-                      <div className="flex flex-wrap gap-1 mb-1">
-                        {tags.filter(t => editTagIds.includes(t.id)).map(t => (
-                          <span key={t.id} className="text-[10px] px-2 py-0.5 rounded-full border bg-muted font-semibold flex items-center gap-1">
-                            {t.name}
-                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setEditTagIds(prev => prev.filter(id => id !== t.id))} />
-                          </span>
-                        ))}
-                      </div>
-                      <Select onValueChange={(val) => {
-                        const strVal = String(val);
-                        if (strVal === "new") {
-                          const name = window.prompt("New tag name:");
-                          if (name) fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }).then(res => res.json()).then(t => { setTags([...tags, t]); setEditTagIds([...editTagIds, t.id]); });
-                        } else if (val && !editTagIds.includes(strVal)) {
-                          setEditTagIds([...editTagIds, strVal]);
-                        }
-                      }}>
-                        <SelectTrigger><span className="truncate">Add Tag...</span></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new" className="font-bold text-primary">+ Create New Tag</SelectItem>
-                          {tags.filter(t => !editTagIds.includes(t.id)).map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+
                     {/blocked/i.test(selectedTask?.status?.name || "") && (
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold text-primary uppercase">Blocked Reason</Label>
-                        <Input required value={editBlockedReason} onChange={(e) => setEditBlockedReason(e.target.value)} placeholder="What is blocking this task?" />
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">Blocked Reason</Label>
+                        <Input required value={editBlockedReason} onChange={(e) => setEditBlockedReason(e.target.value)} placeholder="What is blocking this task?" className="w-full" />
                       </div>
                     )}
                   </div>
+
+                  {/* Tags */}
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-primary uppercase">Description</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase">Tags</Label>
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {tags.filter(t => editTagIds.includes(t.id)).map(t => (
+                        <span key={t.id} className="text-[10px] px-2 py-0.5 rounded-full border bg-muted font-semibold flex items-center gap-1">
+                          {t.name}
+                          <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setEditTagIds(prev => prev.filter(id => id !== t.id))} />
+                        </span>
+                      ))}
+                    </div>
+                    <Select onValueChange={(val) => {
+                      const strVal = String(val);
+                      if (strVal === "new") {
+                        const name = window.prompt("New tag name:");
+                        if (name) fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }).then(res => res.json()).then(t => { setTags([...tags, t]); setEditTagIds([...editTagIds, t.id]); });
+                      } else if (val && !editTagIds.includes(strVal)) {
+                        setEditTagIds([...editTagIds, strVal]);
+                      }
+                    }}>
+                      <SelectTrigger className="w-[180px]"><span className="truncate">Add Tag...</span></SelectTrigger>
+                      <SelectContent className="z-[9999]">
+                        <SelectItem value="new" className="font-bold text-primary">+ Create New Tag</SelectItem>
+                        {tags.filter(t => !editTagIds.includes(t.id)).map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-muted-foreground uppercase">Description</Label>
                     <RichTextEditor content={editDesc} onChange={setEditDesc} users={users} />
                   </div>
+
+                  {/* Attachments */}
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-primary uppercase">Attachments</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase">Attachments</Label>
                     <FileUpload taskId={selectedTask?.id} onUploadComplete={(a) => setSelectedTask(prev => prev ? { ...prev, attachments: [...(prev.attachments || []), a] } : null)} />
                     <AttachmentList 
                       attachments={selectedTask?.attachments || []} 
@@ -2073,7 +2330,14 @@ export default function ProjectBoard() {
                                       <span className="text-xs font-medium">{sub.title}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-[10px] font-bold uppercase" style={{ color: sub.status?.color || '#888' }}>{sub.status?.name}</span>
+                                      {(() => {
+                                        const style = getStatusBadgeStyle(sub.status?.name || '', sub.status?.color);
+                                        return (
+                                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border inline-block" style={style}>
+                                            {sub.status?.name}
+                                          </span>
+                                        );
+                                      })()}
                                       <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={async (e) => {
                                         e.stopPropagation();
                                         await fetch(`/api/tasks/${sub.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId: "" }) });
@@ -2414,7 +2678,7 @@ export default function ProjectBoard() {
                       <div className="flex items-center gap-2">
                         <UserIcon className="h-4 w-4 text-muted-foreground" />
                         <span>{member.name || member.email}</span>
-                        {member.id === project?.ownerId && <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">OWNER</span>}
+                        {member.id === project?.ownerId && <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">PM</span>}
                       </div>
                       {member.id !== project?.ownerId && (
                         <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveMember(member.id)}>

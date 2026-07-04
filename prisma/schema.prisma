@@ -218,6 +218,7 @@ model User {
   id            String        @id @default(cuid())
   email         String        @unique(map: "User_email_key")
   name          String?
+  avatarUrl     String?
   password      String
   role          String        @default("USER")
   isActive      Boolean       @default(true)
