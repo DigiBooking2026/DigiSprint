@@ -50,6 +50,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Notify task assignee, owner, and mentioned users
       const task = await prisma.task.findUnique({ where: { id: String(taskId) } });
       if (task) {
+        if (attachmentIds && attachmentIds.length > 0) {
+          await prisma.task.update({
+            where: { id: task.id },
+            data: {
+              attachments: {
+                connect: attachmentIds.map((id: string) => ({ id }))
+              }
+            }
+          });
+        }
+        
         const usersToNotify = new Set<string>();
         if (task.assigneeId && task.assigneeId !== session.userId) usersToNotify.add(task.assigneeId);
         if (task.ownerId && task.ownerId !== session.userId) usersToNotify.add(task.ownerId);

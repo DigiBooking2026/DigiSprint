@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert, Settings } from "lucide-react";
+import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert, Settings, ChevronDown, ChevronRight } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { toast } from "sonner";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
@@ -382,8 +382,20 @@ function SprintDraggableTask({
   task: ExtendedTask, 
   statuses: TaskStatus[], 
   handleOpenTask: (t: ExtendedTask) => void,
+  users = [],
+  updateTaskAssignee,
+  hasChildren,
+  isCollapsed,
+  onToggleCollapse
+}: { 
+  task: ExtendedTask, 
+  statuses: TaskStatus[], 
+  handleOpenTask: (t: ExtendedTask) => void,
   users?: User[],
-  updateTaskAssignee?: (taskId: string, assigneeId: string) => Promise<void>
+  updateTaskAssignee?: (taskId: string, assigneeId: string) => Promise<void>,
+  hasChildren?: boolean,
+  isCollapsed?: boolean,
+  onToggleCollapse?: (e: React.MouseEvent) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: task.id,
@@ -403,6 +415,13 @@ function SprintDraggableTask({
     <div ref={setNodeRef} style={style} className="flex items-center border-b last:border-0 hover:bg-muted/30 cursor-pointer bg-card group transition-colors" onClick={() => handleOpenTask(task)}>
       <div {...listeners} {...attributes} className="p-2 cursor-grab active:cursor-grabbing text-muted-foreground opacity-20 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
         <GripVertical className="h-4 w-4" />
+      </div>
+      <div className="w-6 flex justify-center shrink-0">
+        {hasChildren && (
+          <div className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded cursor-pointer" onClick={onToggleCollapse}>
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
+        )}
       </div>
       <div className="p-2 w-24 font-mono text-xs text-muted-foreground">{task.ticketId}</div>
       <div className="p-2 flex-1 font-medium">{task.title}</div>
@@ -448,6 +467,12 @@ export default function ProjectBoard() {
   
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"kanban" | "list" | "sprints" | "releases" | "roadmap">("sprints");
+  
+  const [collapsedSprints, setCollapsedSprints] = useState<Record<string, boolean>>({});
+  const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({});
+
+  const toggleSprint = (sprintId: string) => setCollapsedSprints(prev => ({ ...prev, [sprintId]: !prev[sprintId] }));
+  const toggleParent = (parentId: string) => setCollapsedParents(prev => ({ ...prev, [parentId]: !prev[parentId] }));
   const [activeSprintFilter, setActiveSprintFilter] = useState<string>("all");
   const [sprintStatusFilter, setSprintStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_desc");
@@ -1117,10 +1142,13 @@ export default function ProjectBoard() {
             handleOpenTask={handleOpenTask} 
             users={users} 
             updateTaskAssignee={updateTaskAssignee} 
+            hasChildren={childTasks.length > 0}
+            isCollapsed={collapsedParents[parentTask.id]}
+            onToggleCollapse={(e) => { e.stopPropagation(); toggleParent(parentTask.id); }}
           />
           
           {/* Render Child Tasks with Left Indentation */}
-          {childTasks.length > 0 && (
+          {childTasks.length > 0 && !collapsedParents[parentTask.id] && (
             <div className="pl-6 border-l-2 border-dashed border-muted/50 ml-5 my-1.5 space-y-1.5">
               {childTasks.map(childTask => (
                 <SprintDraggableTask 
@@ -1600,18 +1628,21 @@ export default function ProjectBoard() {
               const sprintDone = sprintTasks.filter(task => isDoneStatus(statuses.find(s => s.id === task.statusId)?.name || task.status?.name)).length;
               return (
                 <div key={sprint.id} className="border rounded-xl bg-card overflow-hidden">
-                  <div className="bg-muted/30 p-4 border-b flex justify-between items-center">
-                    <div>
-                      <h3 className="font-bold flex items-center gap-2">
-                        {sprint.name} 
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${sprint.status === 'ACTIVE' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground'}`}>{sprint.status}</span>
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {sprint.startDate && new Date(sprint.startDate).toLocaleDateString()} - {sprint.endDate && new Date(sprint.endDate).toLocaleDateString()}
-                        {sprint.goal && ` • Goal: ${sprint.goal}`}
-                      </p>
+                  <div className="bg-muted/30 p-4 border-b flex justify-between items-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleSprint(sprint.id)}>
+                    <div className="flex items-center gap-2">
+                      {collapsedSprints[sprint.id] ? <ChevronRight className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      <div>
+                        <h3 className="font-bold flex items-center gap-2">
+                          {sprint.name} 
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${sprint.status === 'ACTIVE' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground'}`}>{sprint.status}</span>
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {sprint.startDate && new Date(sprint.startDate).toLocaleDateString()} - {sprint.endDate && new Date(sprint.endDate).toLocaleDateString()}
+                          {sprint.goal && ` • Goal: ${sprint.goal}`}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-4 text-sm" onClick={e => e.stopPropagation()}>
                       <div className="text-right">
                         <span className="font-bold">{sprintTasks.length}</span> issues
                         <span className="mx-2 text-muted-foreground">|</span>
@@ -1648,29 +1679,33 @@ export default function ProjectBoard() {
                       </Button>
                     </div>
                   </div>
-                  {showBurndownFor === sprint.id && (
-                    <div className="p-6 border-b bg-card">
-                      <h4 className="font-bold mb-4">Sprint Burndown</h4>
-                      {isLoadingBurndown ? (
-                        <div className="h-[300px] flex items-center justify-center text-muted-foreground">Loading chart...</div>
-                      ) : burndownData ? (
-                        <BurndownChart data={burndownData} height={300} />
-                      ) : (
-                        <div className="h-[300px] flex items-center justify-center text-destructive">Failed to load burndown data. Does the sprint have a start and end date?</div>
+                  {!collapsedSprints[sprint.id] && (
+                    <>
+                      {showBurndownFor === sprint.id && (
+                        <div className="p-6 border-b bg-card">
+                          <h4 className="font-bold mb-4">Sprint Burndown</h4>
+                          {isLoadingBurndown ? (
+                            <div className="h-[300px] flex items-center justify-center text-muted-foreground">Loading chart...</div>
+                          ) : burndownData ? (
+                            <BurndownChart data={burndownData} height={300} />
+                          ) : (
+                            <div className="h-[300px] flex items-center justify-center text-destructive">Failed to load burndown data. Does the sprint have a start and end date?</div>
+                          )}
+                        </div>
                       )}
-                    </div>
+                      <div className="p-2">
+                        <SprintDroppableArea id={`sprint-${sprint.id}`} isSprint>
+                          <SortableContext items={sprintTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            {sprintTasks.length === 0 ? (
+                              <div className="text-center py-8 text-xs text-muted-foreground italic flex-1 flex items-center justify-center">No tasks in this sprint. Drag tasks here to assign them.</div>
+                            ) : (
+                              renderHierarchicalTasks(sprintTasks)
+                            )}
+                          </SortableContext>
+                        </SprintDroppableArea>
+                      </div>
+                    </>
                   )}
-                  <div className="p-2">
-                    <SprintDroppableArea id={`sprint-${sprint.id}`} isSprint>
-                      <SortableContext items={sprintTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                        {sprintTasks.length === 0 ? (
-                          <div className="text-center py-8 text-xs text-muted-foreground italic flex-1 flex items-center justify-center">No tasks in this sprint. Drag tasks here to assign them.</div>
-                        ) : (
-                          renderHierarchicalTasks(sprintTasks)
-                        )}
-                      </SortableContext>
-                    </SprintDroppableArea>
-                  </div>
                 </div>
               );
             })}
@@ -1939,8 +1974,8 @@ export default function ProjectBoard() {
           <div className="flex flex-1 overflow-hidden">
             {/* LEFT: Task Info */}
             <div className="flex-1 p-8 overflow-y-auto bg-background">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex flex-col xl:flex-row xl:justify-between xl:items-start mb-6 gap-4">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                   <span className="bg-muted px-2.5 py-1 rounded font-mono font-bold text-foreground border shadow-sm">{selectedTask?.ticketId}</span>
                   <span className="text-muted-foreground/30">|</span>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${selectedTask?.type === 'BUG' ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-primary/10 text-primary border border-primary/20'}`}>
@@ -1995,7 +2030,7 @@ export default function ProjectBoard() {
                     </span>
                   ))}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                    {isEditing ? (
                      <>
                        <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="gap-2"><X className="h-4 w-4" /> Cancel</Button>

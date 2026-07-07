@@ -97,6 +97,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
 
+      if (sprintId !== undefined || assigneeId !== undefined) {
+        const childUpdateData: any = {};
+        if (sprintId !== undefined) childUpdateData.sprintId = sprintId || null;
+        if (assigneeId !== undefined) childUpdateData.assigneeId = assigneeId || null;
+
+        await prisma.task.updateMany({
+          where: { parentId: taskId },
+          data: childUpdateData
+        });
+      }
+
       // Log status change
       if (statusId && existingTask.statusId !== statusId) {
         await prisma.taskHistory.create({
