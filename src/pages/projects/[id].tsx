@@ -377,12 +377,6 @@ function SprintDraggableTask({
   statuses, 
   handleOpenTask,
   users = [],
-  updateTaskAssignee
-}: { 
-  task: ExtendedTask, 
-  statuses: TaskStatus[], 
-  handleOpenTask: (t: ExtendedTask) => void,
-  users = [],
   updateTaskAssignee,
   hasChildren,
   isCollapsed,
