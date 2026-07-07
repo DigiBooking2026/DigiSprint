@@ -467,6 +467,22 @@ export default function ProjectBoard() {
 
   const toggleSprint = (sprintId: string) => setCollapsedSprints(prev => ({ ...prev, [sprintId]: !prev[sprintId] }));
   const toggleParent = (parentId: string) => setCollapsedParents(prev => ({ ...prev, [parentId]: !prev[parentId] }));
+
+  useEffect(() => {
+    if (sprints.length > 0) {
+      setCollapsedSprints(prev => {
+        const newState = { ...prev };
+        let hasChanges = false;
+        sprints.forEach(sprint => {
+          if (newState[sprint.id] === undefined) {
+            newState[sprint.id] = sprint.status !== 'ACTIVE';
+            hasChanges = true;
+          }
+        });
+        return hasChanges ? newState : prev;
+      });
+    }
+  }, [sprints]);
   const [activeSprintFilter, setActiveSprintFilter] = useState<string>("all");
   const [sprintStatusFilter, setSprintStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_desc");
