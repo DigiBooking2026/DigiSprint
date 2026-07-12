@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert, Settings, ChevronDown, ChevronRight } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { descriptionToHtml } from "@/lib/markdown";
 import { toast } from "sonner";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
 import { BurndownChart, type BurndownDataPoint } from "@/components/BurndownChart";
@@ -202,9 +203,9 @@ function SortableTaskCard({
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          <div 
+          <div
             className="text-xs text-muted-foreground line-clamp-2 mt-1 mb-2 prose-sm dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: task.description || "" }}
+            dangerouslySetInnerHTML={{ __html: descriptionToHtml(task.description) }}
           />
           
           <div className="mb-3 flex flex-col gap-1 rounded-md bg-muted/40 px-2 py-1.5 text-[10px] text-muted-foreground">
@@ -2438,7 +2439,7 @@ export default function ProjectBoard() {
                             </div>
                           )}
                         </div>
-                        <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: selectedTask?.description || "<p className='italic text-muted-foreground'>No description provided.</p>" }} />
+                        <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: selectedTask?.description ? descriptionToHtml(selectedTask.description) : "<p class='italic text-muted-foreground'>No description provided.</p>" }} />
                         {/blocked/i.test(selectedTask?.status?.name || "") && (
                           <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
                             <p className="mb-1 flex items-center gap-2 font-bold"><ShieldAlert className="h-4 w-4" /> Blocked reason</p>

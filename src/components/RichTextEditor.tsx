@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
@@ -12,7 +12,8 @@ import {
   Undo, Redo 
 } from 'lucide-react'
 import { Button } from './ui/button'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { markdownToHtml, looksLikeMarkdown } from '../lib/markdown'
 
 interface RichTextEditorProps {
   content: string
@@ -22,6 +23,9 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ content, onChange, minHeight = "min-h-[150px]", users = [] }: RichTextEditorProps) {
+  // Keep a live handle to the editor so the paste handler (created at editor
+  // init time, before `editor` exists) can call commands once it's ready.
+  const editorRef = useRef<Editor | null>(null)
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -47,8 +51,27 @@ export function RichTextEditor({ content, onChange, minHeight = "min-h-[150px]",
       attributes: {
         class: `prose prose-sm dark:prose-invert max-w-none ${minHeight} p-3 focus:outline-none border rounded-b-md border-t-0`,
       },
+      // Paste a raw ".md" doc and have it become formatted rich text — like
+      // Jira. Only intercept plain-text pastes that look like Markdown; let
+      // TipTap handle rich HTML pastes (e.g. copied from a web page) normally.
+      handlePaste: (_view, event) => {
+        const ed = editorRef.current
+        if (!ed) return false
+        const text = event.clipboardData?.getData('text/plain') ?? ''
+        const html = event.clipboardData?.getData('text/html') ?? ''
+        if (text && !html && looksLikeMarkdown(text)) {
+          event.preventDefault()
+          ed.chain().focus().insertContent(markdownToHtml(text)).run()
+          return true
+        }
+        return false
+      },
     },
   })
+
+  useEffect(() => {
+    editorRef.current = editor
+  }, [editor])
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {

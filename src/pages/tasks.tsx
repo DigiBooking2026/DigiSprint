@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, Clock, User as UserIcon, AlertCircle, FileText, Bug, Code, GripVertical, Trash2, AlertTriangle, Send, Paperclip, Edit3, Check, X, History, CalendarDays, CheckCircle2, CircleDashed, PlayCircle, Flag, ShieldAlert } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { descriptionToHtml } from "@/lib/markdown";
 import { FileUpload, AttachmentList } from "@/components/FileUpload";
 import { Task, TaskStatus, User, Attachment, Comment, TaskHistory, Project, Tag } from "@/generated/prisma";
 
@@ -641,7 +642,7 @@ export default function AllTasksPage() {
                             </div>
                           )}
                         </div>
-                        <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: selectedTask?.description || "<p className='italic text-muted-foreground'>No description provided.</p>" }} />
+                        <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: selectedTask?.description ? descriptionToHtml(selectedTask.description) : "<p class='italic text-muted-foreground'>No description provided.</p>" }} />
                         {/blocked/i.test(selectedTask?.status?.name || "") && (
                           <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
                             <p className="mb-1 flex items-center gap-2 font-bold"><ShieldAlert className="h-4 w-4" /> Blocked reason</p>

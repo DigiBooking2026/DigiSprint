@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
+import { descriptionToHtml } from "@/lib/markdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -493,9 +494,9 @@ export default function Dashboard() {
                         <span className="text-xs font-mono bg-muted px-2 py-1 rounded">{project.prefix}</span>
                       </div>
                     </div>
-                    <div 
+                    <div
                       className="text-sm text-muted-foreground line-clamp-2 mt-2 prose-sm dark:prose-invert"
-                      dangerouslySetInnerHTML={{ __html: project.description || "" }}
+                      dangerouslySetInnerHTML={{ __html: descriptionToHtml(project.description) }}
                     />
                   </CardHeader>
                   <CardContent className="space-y-4">
