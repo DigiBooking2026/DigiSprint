@@ -64,48 +64,18 @@ function developerName(dev: DeveloperStat) {
   return dev.user.name || dev.user.email;
 }
 
-const getStatusBadgeStyle = (statusName: string, originalColor?: string | null) => {
-  const name = (statusName || '').toLowerCase();
-  if (name.includes('todo') || name.includes('to do') || name.includes('backlog') || name.includes('planned')) {
-    return {
-      color: '#475569', // slate-600
-      backgroundColor: '#f1f5f9', // slate-100
-      borderColor: '#cbd5e1', // slate-300
-    };
-  }
-  if (name.includes('progress') || name.includes('active') || name.includes('doing')) {
-    return {
-      color: '#0f766e', // teal-700
-      backgroundColor: '#f0fdf4', // teal-50
-      borderColor: '#99f6e4', // teal-200
-    };
-  }
-  if (name.includes('done') || name.includes('complete') || name.includes('resolved') || name.includes('closed')) {
-    return {
-      color: '#15803d', // green-700
-      backgroundColor: '#f0fdf4', // green-50
-      borderColor: '#bbf7d0', // green-200
-    };
-  }
-  if (name.includes('block') || name.includes('hold')) {
-    return {
-      color: '#be123c', // rose-700
-      backgroundColor: '#fff1f2', // rose-50
-      borderColor: '#fecdd3', // rose-200
-    };
-  }
-  if (name.includes('review') || name.includes('test')) {
-    return {
-      color: '#6d28d9', // violet-700
-      backgroundColor: '#f5f3ff', // violet-50
-      borderColor: '#ddd6fe', // violet-200
-    };
-  }
-  const color = originalColor || '#888888';
+const getStatusBadgeStyle = (_statusName: string, originalColor?: string | null) => {
+  // Driven by the status colour stored in the DB (taskstatus.color).
+  const color = originalColor || '#64748b';
+  const hex = String(color).replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16) || 0;
+  const g = parseInt(hex.slice(2, 4), 16) || 0;
+  const b = parseInt(hex.slice(4, 6), 16) || 0;
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
   return {
-    color: color,
-    backgroundColor: color + '15',
-    borderColor: color + '30',
+    color: luminance > 150 ? '#1e293b' : '#ffffff',
+    backgroundColor: color,
+    borderColor: color,
   };
 };
 

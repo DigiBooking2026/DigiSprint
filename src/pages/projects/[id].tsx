@@ -326,49 +326,19 @@ function SprintDroppableArea({ id, children, className, isSprint }: { id: string
   );
 }
 
-const getStatusBadgeStyle = (statusName: string, originalColor?: string) => {
-  const name = (statusName || '').toLowerCase();
-  const textColor = '#374151'; // Slate-700 / Dark grey for high-end feel
-  if (name.includes('todo') || name.includes('to do') || name.includes('backlog') || name.includes('planned')) {
-    return {
-      color: textColor,
-      backgroundColor: '#f1f5f9', // slate-100
-      borderColor: '#cbd5e1', // slate-300
-    };
-  }
-  if (name.includes('progress') || name.includes('active') || name.includes('doing')) {
-    return {
-      color: textColor,
-      backgroundColor: '#f0fdfa', // teal-50
-      borderColor: '#99f6e4', // teal-200
-    };
-  }
-  if (name.includes('done') || name.includes('complete') || name.includes('resolved') || name.includes('closed')) {
-    return {
-      color: textColor,
-      backgroundColor: '#f0fdf4', // green-50
-      borderColor: '#bbf7d0', // green-200
-    };
-  }
-  if (name.includes('block') || name.includes('hold')) {
-    return {
-      color: textColor,
-      backgroundColor: '#fff1f2', // rose-50
-      borderColor: '#fecdd3', // rose-200
-    };
-  }
-  if (name.includes('review') || name.includes('test')) {
-    return {
-      color: textColor,
-      backgroundColor: '#f5f3ff', // violet-50
-      borderColor: '#ddd6fe', // violet-200
-    };
-  }
-  const color = originalColor || '#888888';
+// Badge style is driven by the status colour stored in the DB (taskstatus.color).
+// Text colour is chosen for contrast against that colour.
+const getStatusBadgeStyle = (_statusName: string, originalColor?: string) => {
+  const color = originalColor || '#64748b';
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16) || 0;
+  const g = parseInt(hex.slice(2, 4), 16) || 0;
+  const b = parseInt(hex.slice(4, 6), 16) || 0;
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
   return {
-    color: textColor,
-    backgroundColor: color + '15',
-    borderColor: color + '30',
+    color: luminance > 150 ? '#1e293b' : '#ffffff',
+    backgroundColor: color,
+    borderColor: color,
   };
 };
 
@@ -1643,8 +1613,28 @@ export default function ProjectBoard() {
                       {collapsedSprints[sprint.id] ? <ChevronRight className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
                       <div>
                         <h3 className="font-bold flex items-center gap-2">
-                          {sprint.name} 
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${sprint.status === 'ACTIVE' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground'}`}>{sprint.status}</span>
+                          {sprint.name}
+                          {(() => {
+                            const total = sprintTasks.length;
+                            const partial = sprint.status === 'COMPLETED' && total > 0 && sprintDone < total;
+                            const label = partial
+                              ? `Completed partially (${sprintDone}/${total})`
+                              : sprint.status === 'COMPLETED'
+                                ? `Completed (${sprintDone}/${total})`
+                                : sprint.status === 'ACTIVE'
+                                  ? `Active (${sprintDone}/${total})`
+                                  : 'Planned';
+                            const bg = partial ? '#fdcb6e'
+                              : sprint.status === 'COMPLETED' ? '#00b894'
+                              : sprint.status === 'ACTIVE' ? '#74b9ff'
+                              : '#b2bec3';
+                            const fg = sprint.status === 'COMPLETED' && !partial ? '#ffffff' : '#1e293b';
+                            return (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ backgroundColor: bg, color: fg }}>
+                                {label}
+                              </span>
+                            );
+                          })()}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">
                           {sprint.startDate && new Date(sprint.startDate).toLocaleDateString()} - {sprint.endDate && new Date(sprint.endDate).toLocaleDateString()}
