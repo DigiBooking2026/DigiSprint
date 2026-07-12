@@ -67,14 +67,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return found ? found.id : project.statuses[0].id;
     };
 
-    // Helper to create a single task
-    const createTask = async (taskData: any, sprintId?: string, epicId?: string) => {
+    // Helper to create a single task (optionally a subtask via parentId)
+    const createTask = async (taskData: any, sprintId?: string, epicId?: string, parentId?: string) => {
       currentTaskCount++;
       const ticketId = `${project.prefix}-${currentTaskCount}`;
-      
+
       const statusId = getStatusId(taskData.status);
       const assigneeId = getAssigneeId(taskData.assigneeEmail, taskData.assigneeName, taskData.assigneeId);
-      
+
       return await prisma.task.create({
         data: {
           ticketId,
@@ -88,12 +88,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           projectId: project.id,
           sprintId,
           epicId,
+          parentId: parentId || taskData.parentId || undefined,
           ownerId: user.id,
           assigneeId,
           startDate: taskData.startDate ? new Date(taskData.startDate) : undefined,
           deadline: taskData.deadline ? new Date(taskData.deadline) : undefined,
         }
       });
+    };
+
+    // Create a task and, if it has a `subtasks` array, its children (parentId = this task).
+    const createTaskWithSubtasks = async (taskData: any, sprintId?: string, epicId?: string) => {
+      const parent = await createTask(taskData, sprintId, epicId);
+      results.tasksCreated++;
+      if (Array.isArray(taskData.subtasks)) {
+        for (const sub of taskData.subtasks) {
+          if (!sub.title) continue;
+          await createTask(sub, sprintId, resolveEpicId(sub.epicTitle) || epicId, parent.id);
+          results.tasksCreated++;
+        }
+      }
+      return parent;
     };
 
     const epicIdMap = new Map<string, string>(); // epic title -> epic id
@@ -133,8 +148,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (Array.isArray(sprintData.tasks)) {
           for (const taskData of sprintData.tasks) {
             if (!taskData.title) continue;
-            await createTask(taskData, sprint.id, resolveEpicId(taskData.epicTitle));
-            results.tasksCreated++;
+            await createTaskWithSubtasks(taskData, sprint.id, resolveEpicId(taskData.epicTitle));
           }
         }
       }
@@ -144,8 +158,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (Array.isArray(payload.tasks)) {
       for (const taskData of payload.tasks) {
         if (!taskData.title) continue;
-        await createTask(taskData, undefined, resolveEpicId(taskData.epicTitle));
-        results.tasksCreated++;
+        await createTaskWithSubtasks(taskData, undefined, resolveEpicId(taskData.epicTitle));
       }
     }
 
